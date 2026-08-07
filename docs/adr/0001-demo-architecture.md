@@ -5,7 +5,7 @@
 
 ## Context
 
-Orber is currently a working demo, but planned authentication, acquisition
+Oracular V2 is currently a working demo, but planned authentication, acquisition
 catalog and scientific-analysis capabilities will add providers and state. The
 original map component owned UI, provider calls, configuration and mapping.
 

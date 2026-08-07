@@ -15,7 +15,7 @@ export function AcquisitionCalendar(props: AcquisitionCalendarProps) {
   return (
     <React.Suspense
       fallback={
-        <div className="orber-calendar-status" role="status">
+        <div className="oracular-calendar-status" role="status">
           Loading calendar…
         </div>
       }

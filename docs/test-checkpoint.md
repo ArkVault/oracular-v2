@@ -29,9 +29,9 @@
 - Nubosidad ausente, negativa, mayor a 100 o `NaN` no es elegible.
 - La UI primaria renderiza controles de análisis.
 - Seleccionar clorofila monta la capa WMS `CHLA`.
-- El Warp Loader importado de `orber-geospatial-insights` solo aparece durante carga y expone un estado accesible.
-- El shell modular muestra la marca Orber, búsqueda accesible y mantiene Dates/Sensors mutuamente excluyentes.
-- El localhost responde con el shell HTML de Orber.
+- El Warp Loader importado de `oracular-v2` solo aparece durante carga y expone un estado accesible.
+- El shell modular muestra la marca Oracular V2, búsqueda accesible y mantiene Dates/Sensors mutuamente excluyentes.
+- El localhost responde con el shell HTML de Oracular V2.
 
 ## Gates
 
@@ -63,7 +63,7 @@ npm run test:smoke    → PASS
 Baseline unitaria, integración, smoke, cobertura y gate local: ✅
 CI: ✅; E2E: pendiente.
 
-**Fase 4 — Responsive, accesibilidad y UX:** parcial. El shell visual de `orber-geospatial-insights` quedó adaptado a la lógica real, verificado manualmente en 375 y 1440 px sin overflow horizontal. Falta formalizar E2E responsive y revisar contenido/descripciones.
+**Fase 4 — Responsive, accesibilidad y UX:** parcial. El shell visual de `oracular-v2` quedó adaptado a la lógica real, verificado manualmente en 375 y 1440 px sin overflow horizontal. Falta formalizar E2E responsive y revisar contenido/descripciones.
 
 ## Checkpoint — GetFeatureInfo real
 

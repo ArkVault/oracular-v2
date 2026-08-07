@@ -24,8 +24,8 @@ export function AnalysisDetailsPanel({
   pointInfo,
 }: AnalysisDetailsPanelProps) {
   return (
-    <aside className="orber-panel orber-detail-panel" aria-label={`${indicator.name} details`}>
-      <div className="orber-panel__heading">
+    <aside className="oracular-panel oracular-detail-panel" aria-label={`${indicator.name} details`}>
+      <div className="oracular-panel__heading">
         <h3>{indicator.name}</h3>
         <button onClick={onClose} aria-label="Close details">
           <X />
@@ -38,44 +38,44 @@ export function AnalysisDetailsPanel({
           onClose={onClearPoint}
         />
       )}
-      <div className="orber-layer-details">
+      <div className="oracular-layer-details">
         {indicator.type === 'discrete' ? (
-          <div className="orber-legend-card">
-            <div className="orber-legend-label">Color classes</div>
-            <div className="orber-discrete-legend">
+          <div className="oracular-legend-card">
+            <div className="oracular-legend-label">Color classes</div>
+            <div className="oracular-discrete-legend">
               {indicator.indicators.map((item, index) => (
-                <div key={index} className="orber-discrete-legend__item">
-                  <span className={`orber-discrete-legend__swatch ${item.color}`} />
+                <div key={index} className="oracular-discrete-legend__item">
+                  <span className={`oracular-discrete-legend__swatch ${item.color}`} />
                   <span>{item.label}</span>
                 </div>
               ))}
             </div>
           </div>
         ) : indicator.type === 'natural' ? null : measurementScale ? (
-          <div className="orber-legend-card" aria-label="Measurement range">
-            <div className="orber-continuous-legend">
-              <div className="orber-continuous-legend__values">
+          <div className="oracular-legend-card" aria-label="Measurement range">
+            <div className="oracular-continuous-legend">
+              <div className="oracular-continuous-legend__values">
                 {[...measurementScale.values].reverse().map((value) => (
                   <span key={value}>{value}</span>
                 ))}
               </div>
-              <div className="orber-continuous-legend__bar">
+              <div className="oracular-continuous-legend__bar">
                 <div
                   aria-label={`${indicator.name} color scale`}
                   style={{ backgroundImage: createMeasurementGradient(measurementScale) }}
                 />
               </div>
-              <div className="orber-continuous-legend__unit">{measurementScale.unit}</div>
+              <div className="oracular-continuous-legend__unit">{measurementScale.unit}</div>
             </div>
           </div>
         ) : (
-          <div className="orber-legend-card">
-            <div className="orber-legend-label">Measurement range unavailable</div>
+          <div className="oracular-legend-card">
+            <div className="oracular-legend-label">Measurement range unavailable</div>
           </div>
         )}
-        <p className="orber-layer-description">{indicator.description}</p>
+        <p className="oracular-layer-description">{indicator.description}</p>
       </div>
-      <p className="orber-reference">{indicator.quote}</p>
+      <p className="oracular-reference">{indicator.quote}</p>
     </aside>
   );
 }

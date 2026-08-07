@@ -150,12 +150,12 @@ describe('Map workspace integration', () => {
     expect(await screen.findByTestId('draw-control')).toBeVisible();
   });
 
-  it('should expose the modular Orber navigation and keep overlays mutually exclusive', () => {
+  it('should expose the modular Oracular V2 navigation and keep overlays mutually exclusive', () => {
     // ARRANGE
     render(<Map />);
 
     // ACT + ASSERT
-    expect(screen.getByRole('heading', { name: 'Orber' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Oracular V2' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Search' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Dates' }));

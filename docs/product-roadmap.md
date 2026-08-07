@@ -1,4 +1,4 @@
-# Orber — Roadmap de estabilización y evolución
+# Oracular V2 — Roadmap de estabilización y evolución
 
 **Versión:** 1.0
 **Fecha:** 2026-08-01
@@ -7,7 +7,7 @@
 
 ## 1. Resumen ejecutivo
 
-Orber es una SPA geoespacial para explorar imágenes de Copernicus y analizar indicadores ambientales sobre un mapa. Antes de ampliar el producto, el proyecto debe asegurar la integridad de los datos, reducir deuda técnica, incorporar pruebas, corregir la experiencia responsive y establecer una entrega reproducible en Vercel.
+Oracular V2 es una SPA geoespacial para explorar imágenes de Copernicus y analizar indicadores ambientales sobre un mapa. Antes de ampliar el producto, el proyecto debe asegurar la integridad de los datos, reducir deuda técnica, incorporar pruebas, corregir la experiencia responsive y establecer una entrega reproducible en Vercel.
 
 Después de esa estabilización, el roadmap incorpora autenticación con Google y un calendario que únicamente permita seleccionar fechas con imágenes Copernicus cuya nubosidad reportada sea inferior al 10%.
 
@@ -120,7 +120,7 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 - Un error del proveedor nunca se muestra como valor válido.
 - Cada medición visible identifica capa, fecha, unidad y fuente.
 
-**Checkpoint 2026-08-01:** `GetFeatureInfo` real está integrado y la simulación fue eliminada. La instancia devuelve escena, fecha, nubosidad y canales renderizados; Orber los trata explícitamente como no escalares. Sigue pendiente configurar una salida científica escalar o adoptar Statistical API para completar la fase.
+**Checkpoint 2026-08-01:** `GetFeatureInfo` real está integrado y la simulación fue eliminada. La instancia devuelve escena, fecha, nubosidad y canales renderizados; Oracular V2 los trata explícitamente como no escalares. Sigue pendiente configurar una salida científica escalar o adoptar Statistical API para completar la fase.
 
 ### Fase 2 — Arquitectura y contratos tipados (1 semana)
 
@@ -146,7 +146,7 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 
 **Criterio de salida:** el flujo principal tiene cobertura automatizada y todos los gates pasan.
 
-**Checkpoint 2026-08-01:** baseline local en progreso. Existen 13 tests unitarios, 2 de integración, 1 smoke test, cobertura del dominio crítico y un gate `check` verde. El loader actual de `orber-geospatial-insights` quedó integrado y probado. CI y E2E permanecen pendientes; ver `docs/test-checkpoint.md`.
+**Checkpoint 2026-08-01:** baseline local en progreso. Existen 13 tests unitarios, 2 de integración, 1 smoke test, cobertura del dominio crítico y un gate `check` verde. El loader actual de `oracular-v2` quedó integrado y probado. CI y E2E permanecen pendientes; ver `docs/test-checkpoint.md`.
 
 ### Fase 4 — Responsive, accesibilidad y UX de mapa (1 semana)
 
@@ -160,7 +160,7 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 
 **Criterio de salida:** los flujos P0 funcionan en 375, 768 y 1440 px sin contenido inaccesible.
 
-**Checkpoint 2026-08-01:** se integró el lenguaje visual modular de `orber-geospatial-insights`: header de cristal, paneles flotantes, navegación compacta, popovers de fechas/sensores, estados activos y adaptación móvil. La composición fue validada manualmente en 375 y 1440 px sin overflow horizontal; quedan pendientes E2E responsive y auditoría completa de accesibilidad.
+**Checkpoint 2026-08-01:** se integró el lenguaje visual modular de `oracular-v2`: header de cristal, paneles flotantes, navegación compacta, popovers de fechas/sensores, estados activos y adaptación móvil. La composición fue validada manualmente en 375 y 1440 px sin overflow horizontal; quedan pendientes E2E responsive y auditoría completa de accesibilidad.
 
 ### Fase 5 — Pipeline de Vercel (2–3 días)
 
@@ -297,7 +297,7 @@ La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la 
 ║         Ready for /arch-review                       ║
 ╚══════════════════════════════════════════════════════╝
 
-PROJECT: Orber
+PROJECT: Oracular V2
 TYPE: Fullstack evolution of an existing Vite SPA
 MODE: AUDIT + incremental migration
 

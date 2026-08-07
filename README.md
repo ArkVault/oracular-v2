@@ -1,6 +1,6 @@
-# Orber Geospatial Insights
+# Oracular V2
 
-Orber is a browser-based geospatial analysis demo for exploring Copernicus
+Oracular V2 is a browser-based geospatial analysis demo for exploring Copernicus
 imagery and environmental indicators without requiring a desktop GIS. The
 application combines an interactive Leaflet map, Sentinel Hub WMS layers,
 acquisition-date discovery and point-level analysis in a responsive interface.
@@ -8,8 +8,6 @@ acquisition-date discovery and point-level analysis in a responsive interface.
 The repository currently represents a technical demo. It is suitable for
 product validation and controlled testing, but it should not yet be treated as
 a production scientific system.
-
-![Captura de pantalla 2025-06-28 a la(s) 2 15 49 a m](https://github.com/user-attachments/assets/520317b3-cd4c-4f1b-b88c-8b49fc2bc7d3)
 
 ## Current capabilities
 
@@ -31,8 +29,6 @@ a production scientific system.
 - Local quality gate covering lint, TypeScript, automated tests, coverage and
   production build.
 
-![orb4](https://github.com/user-attachments/assets/dc3208c0-907e-4b7f-937d-5402eb0da8a2)
-
 ## How the demo works
 
 1. The user searches for a place or navigates directly on the map.
@@ -43,14 +39,12 @@ a production scientific system.
 5. Clicking the map requests feature information for the selected parameter and
    displays the result, provenance and quality state in the analysis panel.
 
-   ![orb1](https://github.com/user-attachments/assets/442d78db-2d00-423b-be5a-9e4abbf6a243)
-
 ## Scientific interpretation
 
-Orber distinguishes between scalar measurements and rendered image channels.
+Oracular V2 distinguishes between scalar measurements and rendered image channels.
 If Copernicus returns a scalar value, the application can present it with the
 configured unit and quality range. If the provider returns only RGB or rendered
-channels, Orber does not label those channels as a scientific measurement.
+channels, Oracular V2 does not label those channels as a scientific measurement.
 
 Color-derived values are estimates based on the displayed scale. They are useful
 for interface and workflow validation, but they are not a replacement for a
@@ -268,4 +262,4 @@ npm run check
 Open a focused pull request describing the behavior changed, the validation
 performed and any remaining scientific or deployment limitations.
 
-Copyright 2025 Orber. All rights reserved.
+Copyright 2025 Oracular V2. All rights reserved.

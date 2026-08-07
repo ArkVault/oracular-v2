@@ -81,19 +81,19 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
   };
 
   return (
-    <nav className="orber-header" aria-label="Primary navigation">
-      <div className="orber-brand">
-        <div className="orber-brand__mark" aria-hidden="true">
+    <nav className="oracular-header" aria-label="Primary navigation">
+      <div className="oracular-brand">
+        <div className="oracular-brand__mark" aria-hidden="true">
           <span />
         </div>
-        <h1>Orber</h1>
+        <h1>Oracular V2</h1>
       </div>
 
-      <div className="orber-header__nav">
+      <div className="oracular-header__nav">
         <Button
           type="button"
           variant="ghost"
-          className={`date-button orber-nav-button ${showDatePicker ? 'is-active' : ''}`}
+          className={`date-button oracular-nav-button ${showDatePicker ? 'is-active' : ''}`}
           onClick={toggleDatePicker}
           aria-expanded={showDatePicker}
         >
@@ -102,7 +102,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
         <Button
           type="button"
           variant="ghost"
-          className={`sensor-button orber-nav-button ${showSensorMenu ? 'is-active' : ''}`}
+          className={`sensor-button oracular-nav-button ${showSensorMenu ? 'is-active' : ''}`}
           onClick={toggleSensorMenu}
           aria-expanded={showSensorMenu}
         >
@@ -111,11 +111,11 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
 
         {showDatePicker && (
           <Card
-            className="date-picker-container orber-popover orber-popover--calendar"
+            className="date-picker-container oracular-popover oracular-popover--calendar"
             role="dialog"
             aria-label="Available acquisition dates"
           >
-            <div className="orber-popover__eyebrow">Copernicus imagery</div>
+            <div className="oracular-popover__eyebrow">Copernicus imagery</div>
             <h2>Select acquisition date</h2>
             <AcquisitionCalendar
               selected={acquisitions.selectedCalendarDate}
@@ -133,7 +133,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               modifiers={{ available: acquisitions.availableCalendarDates }}
               modifiersClassNames={{ available: 'rdp-day_available' }}
             />
-            <div className="orber-calendar-status" aria-live="polite">
+            <div className="oracular-calendar-status" aria-live="polite">
               {acquisitions.isLoading
                 ? 'Loading available Copernicus dates…'
                 : acquisitions.error
@@ -147,19 +147,19 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
 
         {showSensorMenu && (
           <Card
-            className="sensor-menu-container orber-popover orber-popover--sensors"
+            className="sensor-menu-container oracular-popover oracular-popover--sensors"
             role="dialog"
             aria-label="Available sensors"
           >
-            <div className="orber-popover__eyebrow">Data sources</div>
+            <div className="oracular-popover__eyebrow">Data sources</div>
             <h2>Available sensors</h2>
-            <div className="orber-sensor-list">
+            <div className="oracular-sensor-list">
               <button className="is-selected">
-                <span className="orber-sensor-dot" />
+                <span className="oracular-sensor-dot" />
                 <span><strong>Sentinel-2</strong><small>Active · multispectral</small></span>
               </button>
               <button disabled>
-                <span className="orber-sensor-dot" />
+                <span className="oracular-sensor-dot" />
                 <span><strong>PlanetScope</strong><small>Coming soon</small></span>
               </button>
             </div>
@@ -167,14 +167,14 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
         )}
       </div>
 
-      <div className="orber-header__actions">
-        <div className="orber-search-wrap">
+      <div className="oracular-header__actions">
+        <div className="oracular-search-wrap">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={toggleSearch}
-            className={`orber-icon-button ${showSearch ? 'is-active' : ''}`}
+            className={`oracular-icon-button ${showSearch ? 'is-active' : ''}`}
             aria-label="Search"
             aria-expanded={showSearch}
           >
@@ -182,8 +182,8 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           </Button>
 
           {showSearch && (
-            <Card className="orber-popover orber-search-popover">
-              <div className="orber-search-field">
+            <Card className="oracular-popover oracular-search-popover">
+              <div className="oracular-search-field">
                 <Search className="w-4 h-4 text-gray-400" />
                 <input
                   type="text"
@@ -191,7 +191,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
                   value={placeSearch.query}
                   onChange={(event) => placeSearch.onSearch(event.target.value)}
                   placeholder="Search places..."
-                  className="orber-search-input"
+                  className="oracular-search-input"
                 />
                 {placeSearch.query && (
                   <Button
@@ -199,7 +199,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
                     variant="ghost"
                     size="icon"
                     onClick={placeSearch.onClear}
-                    className="orber-search-clear"
+                    className="oracular-search-clear"
                     aria-label="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -238,7 +238,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="orber-icon-button"
+          className="oracular-icon-button"
           aria-label="Notifications"
         >
           <Bell />
@@ -247,7 +247,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="orber-user"
+          className="oracular-user"
           aria-label="Account"
         >
           <UserRound />

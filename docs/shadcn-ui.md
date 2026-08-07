@@ -1,13 +1,13 @@
-# shadcn/ui en Orber
+# shadcn/ui en Oracular V2
 
 ## Objetivo
 
-Orber usa shadcn/ui de forma incremental para compartir primitivas accesibles sin reemplazar la UI existente. Los componentes viven en el repositorio: se pueden inspeccionar, adaptar y versionar junto con la aplicación.
+Oracular V2 usa shadcn/ui de forma incremental para compartir primitivas accesibles sin reemplazar la UI existente. Los componentes viven en el repositorio: se pueden inspeccionar, adaptar y versionar junto con la aplicación.
 
 La integración conserva deliberadamente:
 
 - La identidad visual gris tipo glass, sus transparencias y blur.
-- Las clases `orber-*`, que siguen siendo la capa visual específica del producto.
+- Las clases `oracular-*`, que siguen siendo la capa visual específica del producto.
 - La jerarquía, posición y comportamiento de paneles, mapa y loader.
 - Tailwind CSS 3 por compatibilidad con el proyecto actual. Una migración futura a Tailwind 4 debe tratarse como un cambio separado.
 
@@ -27,7 +27,7 @@ El alias de UI apunta a `@/components/UI` —con `UI` en mayúscula— porque es
 
 ## Uso
 
-Se puede añadir shadcn a un control sin alterar su apariencia. Las clases de Orber se pasan al componente y tienen prioridad sobre la variante base:
+Se puede añadir shadcn a un control sin alterar su apariencia. Las clases de Oracular V2 se pasan al componente y tienen prioridad sobre la variante base:
 
 ```tsx
 import { Button } from '@/components/UI/button';
@@ -35,7 +35,7 @@ import { Button } from '@/components/UI/button';
 <Button
   type="button"
   variant="ghost"
-  className="orber-icon-button"
+  className="oracular-icon-button"
   aria-label="Search"
 >
   <Search />
@@ -47,7 +47,7 @@ Para superficies flotantes:
 ```tsx
 import { Card } from '@/components/UI/card';
 
-<Card className="orber-popover" role="dialog">
+<Card className="oracular-popover" role="dialog">
   {/* contenido existente */}
 </Card>
 ```
@@ -62,11 +62,11 @@ Desde la raíz del proyecto:
 npx shadcn@latest add dialog
 ```
 
-La CLI usa `components.json` y escribe los componentes bajo `src/components/UI`. Cada componente generado debe revisarse antes de integrarlo: dependencias nuevas, tokens CSS, accesibilidad y posibles estilos que entren en conflicto con `orber-*`.
+La CLI usa `components.json` y escribe los componentes bajo `src/components/UI`. Cada componente generado debe revisarse antes de integrarlo: dependencias nuevas, tokens CSS, accesibilidad y posibles estilos que entren en conflicto con `oracular-*`.
 
 ## Reglas de integración
 
-1. Mantener las clases `orber-*` cuando se migre un elemento ya existente.
+1. Mantener las clases `oracular-*` cuando se migre un elemento ya existente.
 2. Preferir tokens neutrales y variantes `ghost`, `outline` o `secondary`; no introducir color de marca en hover dentro de los paneles.
 3. No acoplar estados de Leaflet, consultas Copernicus ni lógica de análisis a una primitiva visual.
 4. No modificar `ParameterLoader` al agregar componentes shadcn/ui.

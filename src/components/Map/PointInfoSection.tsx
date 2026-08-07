@@ -23,11 +23,11 @@ interface PointInfoSectionProps {
 export function PointInfoSection({ info, unit, onClose }: PointInfoSectionProps) {
   return (
     <section
-      className="orber-point-section"
+      className="oracular-point-section"
       role="region"
       aria-label="Selected point details"
     >
-      <div className="orber-point-section__header">
+      <div className="oracular-point-section__header">
         <div>
           <span>Selected point</span>
           <h4>Point information</h4>
@@ -37,7 +37,7 @@ export function PointInfoSection({ info, unit, onClose }: PointInfoSectionProps)
         </button>
       </div>
 
-      <dl className="orber-point-section__data">
+      <dl className="oracular-point-section__data">
         <div>
           <dt>Coordinates</dt>
           <dd>{info.coordinates[0].toFixed(4)}, {info.coordinates[1].toFixed(4)}</dd>
@@ -67,7 +67,7 @@ export function PointInfoSection({ info, unit, onClose }: PointInfoSectionProps)
         ) : null}
 
         {info.message && (
-          <div className="orber-point-section__message">
+          <div className="oracular-point-section__message">
             <dd>{info.message}</dd>
           </div>
         )}
@@ -87,7 +87,7 @@ export function PointInfoSection({ info, unit, onClose }: PointInfoSectionProps)
       </dl>
 
       {info.acquisitionId && (
-        <div className="orber-point-section__scene">Scene: {info.acquisitionId}</div>
+        <div className="oracular-point-section__scene">Scene: {info.acquisitionId}</div>
       )}
     </section>
   );

@@ -1,4 +1,4 @@
-# Orber — Test Strategy
+# Oracular V2 — Test Strategy
 
 **Modo inicial:** Setup + audit
 **Riesgo principal:** resultados geoespaciales no trazables y filtros temporales incorrectos
@@ -9,7 +9,7 @@
 |---|---|---|
 | Unit | Vitest | Reglas puras de calidad y nubosidad |
 | Integration | Vitest + Testing Library + jsdom | Estado React → capa WMS |
-| Smoke | Node fetch | Shell de Orber en localhost o Preview |
+| Smoke | Node fetch | Shell de Oracular V2 en localhost o Preview |
 | Coverage | Vitest V8 | Dominio crítico, gate mínimo 90% |
 | E2E futuro | Playwright | Login Google y calendario completo |
 
