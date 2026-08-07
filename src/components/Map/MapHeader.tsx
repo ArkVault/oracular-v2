@@ -1,11 +1,13 @@
 import * as React from 'react';
 import { Activity, Bell, Calendar, Search, UserRound, X } from 'lucide-react';
-import { DayPicker } from 'react-day-picker';
 
 import { Button } from '@/components/UI/button';
 import { Card } from '@/components/UI/card';
 import { localDateToAcquisitionDate } from '@/features/acquisitions/domain/acquisition-date';
 import type { PlaceSearchResult } from '@/features/place-search/domain/place';
+
+import { AcquisitionCalendar } from './AcquisitionCalendar';
+import { headerOverlayReducer } from './header-overlay-state';
 
 interface AcquisitionDateMenuProps {
   availableCalendarDates: Date[];
@@ -35,40 +37,37 @@ interface MapHeaderProps {
 }
 
 export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
-  const [showDatePicker, setShowDatePicker] = React.useState(false);
-  const [showSensorMenu, setShowSensorMenu] = React.useState(false);
-  const [showSearch, setShowSearch] = React.useState(false);
+  const [activeOverlay, dispatchOverlay] = React.useReducer(
+    headerOverlayReducer,
+    null,
+  );
+  const showDatePicker = activeOverlay === 'dates';
+  const showSensorMenu = activeOverlay === 'sensors';
+  const showSearch = activeOverlay === 'search';
 
   const toggleDatePicker = () => {
-    const nextVisible = !showDatePicker;
-    setShowDatePicker(nextVisible);
-    if (nextVisible) {
+    if (!showDatePicker) {
       void acquisitions.onLoad();
     }
-    setShowSensorMenu(false);
-    setShowSearch(false);
+    dispatchOverlay({ type: 'toggle', overlay: 'dates' });
   };
 
   const toggleSensorMenu = () => {
-    setShowSensorMenu((visible) => !visible);
-    setShowDatePicker(false);
-    setShowSearch(false);
+    dispatchOverlay({ type: 'toggle', overlay: 'sensors' });
   };
 
   const toggleSearch = () => {
-    setShowSearch((visible) => !visible);
-    setShowDatePicker(false);
-    setShowSensorMenu(false);
+    dispatchOverlay({ type: 'toggle', overlay: 'search' });
   };
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.date-picker-container') && !target.closest('.date-button')) {
-        setShowDatePicker(false);
+        dispatchOverlay({ type: 'close', overlay: 'dates' });
       }
       if (!target.closest('.sensor-menu-container') && !target.closest('.sensor-button')) {
-        setShowSensorMenu(false);
+        dispatchOverlay({ type: 'close', overlay: 'sensors' });
       }
     };
 
@@ -78,7 +77,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
 
   const selectPlace = (result: PlaceSearchResult) => {
     placeSearch.onSelect(result);
-    setShowSearch(false);
+    dispatchOverlay({ type: 'close', overlay: 'search' });
   };
 
   return (
@@ -118,8 +117,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           >
             <div className="orber-popover__eyebrow">Copernicus imagery</div>
             <h2>Select acquisition date</h2>
-            <DayPicker
-              mode="single"
+            <AcquisitionCalendar
               selected={acquisitions.selectedCalendarDate}
               onSelect={(date) => {
                 acquisitions.onSelectDate(
@@ -134,10 +132,6 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               }
               modifiers={{ available: acquisitions.availableCalendarDates }}
               modifiersClassNames={{ available: 'rdp-day_available' }}
-              numberOfMonths={1}
-              className="bg-transparent text-white"
-              showOutsideDays
-              fixedWeeks
             />
             <div className="orber-calendar-status" aria-live="polite">
               {acquisitions.isLoading

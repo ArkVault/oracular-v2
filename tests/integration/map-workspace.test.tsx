@@ -69,7 +69,7 @@ vi.mock('react-leaflet', async () => {
 });
 
 vi.mock('../../src/components/Map/DrawControl', () => ({
-  DrawControl: () => null,
+  DrawControl: () => <div data-testid="draw-control" />,
 }));
 
 import { Map } from '../../src/components/Map/Map';
@@ -138,6 +138,16 @@ describe('Map workspace integration', () => {
     expect(screen.getByRole('button', { name: 'Reset view' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Select Area' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Dashboard' })).toBeNull();
+  });
+
+  it('should defer drawing tools until the first drawing command', async () => {
+    render(<Map />);
+
+    expect(screen.queryByTestId('draw-control')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Draw polygon' }));
+
+    expect(await screen.findByTestId('draw-control')).toBeVisible();
   });
 
   it('should expose the modular Orber navigation and keep overlays mutually exclusive', () => {

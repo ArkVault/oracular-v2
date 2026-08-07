@@ -83,6 +83,21 @@ Dependency rules:
 - Concrete providers are selected in `src/app/services.ts`.
 - Browser configuration is validated in `src/app/config.ts`.
 
+Design patterns are applied only where they remove a demonstrated source of
+complexity:
+
+- A reducer implements the State pattern for the Dates, Sensors and Search
+  overlays. One discriminated state makes their mutual exclusion explicit.
+- A pure Factory/Mapper translates Copernicus feature-info results into the
+  point-detail presentation model, including quality, provenance and no-data
+  states.
+- React lazy boundaries defer React DayPicker and Leaflet Draw until the user
+  opens the calendar or activates a drawing command.
+
+These are small functional abstractions rather than framework layers. The demo
+keeps React state local and introduces a new port only for a real external
+boundary.
+
 See [Architecture](docs/architecture.md),
 [architecture decision record](docs/adr/0001-demo-architecture.md) and the
 [original architecture review](docs/architecture-review.md) for additional
@@ -147,8 +162,8 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The latest verified local checkpoint contains 14 test suites
-and 61 tests. Coverage for the configured critical modules is 97.32 percent
+production build. The latest verified local checkpoint contains 16 test suites
+and 70 tests. Coverage for the configured critical modules is 97.32 percent
 statements, 92.02 percent branches, 97.77 percent functions and 98.09 percent
 lines.
 
@@ -171,6 +186,16 @@ Individual commands:
 Detailed strategy and results are available in
 [Test strategy](docs/test-strategy.md) and
 [Test checkpoint](docs/test-checkpoint.md).
+
+### Bundle strategy
+
+The production build uses feature-level lazy boundaries for optional tooling.
+The verified main JavaScript bundle decreased from 481.23 kB (144.67 kB gzip)
+to 364.85 kB (116.89 kB gzip), a reduction of 24.18 percent uncompressed and
+19.20 percent gzip. The calendar is emitted as a 72.76 kB chunk (19.28 kB gzip),
+while drawing is emitted as a 67.77 kB chunk (14.55 kB gzip) plus its deferred
+CSS. File hashes vary between builds; these measurements are a local baseline,
+not a permanent performance budget.
 
 ## Deployment
 

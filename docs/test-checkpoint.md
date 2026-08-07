@@ -170,3 +170,29 @@ a `main` mediante un release controlado.
 **Roadmap sync:** la violación principal de Single Responsibility del workspace
 queda corregida y verificada. El siguiente refactor debe centrarse en lazy
 loading y presupuesto de bundle, no en añadir capas abstractas adicionales.
+
+## Checkpoint — Patrones de diseño y carga diferida
+
+**Fecha:** 2026-08-07
+**Test status:** ✅ TESTED
+
+- TDD rojo confirmó la ausencia del reducer de overlays y del mapper de detalle
+  antes de implementarlos.
+- Un reducer tipado aplica State a Dates, Sensors y Search, garantizando que sólo
+  un overlay esté activo.
+- Una Factory/Mapper pura concentra la traducción de `FeatureInfoResult` al
+  modelo presentado por el panel derecho.
+- React DayPicker y Leaflet Draw se separaron del bundle inicial; dibujo se
+  descarga al ejecutar el primer comando y permanece montado para conservar las
+  geometrías.
+- El bundle JS principal bajó de 481.23 kB (144.67 kB gzip) a 364.85 kB
+  (116.89 kB gzip): 24.18% menos sin comprimir y 19.20% menos gzip.
+- Regresión completa: 16 suites y 70 tests pasan.
+- Cobertura crítica sin regresión: 97.32% statements, 92.02% branches, 97.77%
+  functions y 98.09% lines.
+- `npm run check`: lint, typecheck, cobertura y build pasan.
+
+**Roadmap sync:** las oportunidades inmediatas State, Factory/Mapper y lazy
+loading quedan completadas y verificadas. El siguiente patrón debe responder a
+una capacidad concreta; la prioridad funcional continúa siendo una salida
+científica escalar validada y después el contrato de autenticación.

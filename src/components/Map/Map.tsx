@@ -1,7 +1,6 @@
 import * as React from 'react';
 import type L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
 import 'react-day-picker/dist/style.css';
 
 import { appConfig } from '@/app/config';
@@ -22,7 +21,6 @@ import { MapHeader } from './MapHeader';
 import type { DrawMode } from './map-types';
 
 import '../UI/parameter-loader.css';
-import './leaflet-draw-override.css';
 import './loader.css';
 import './map-ui.css';
 
@@ -46,6 +44,7 @@ export function Map({
   const [selectedLayer, setSelectedLayer] = React.useState('');
   const [isIndicatorLoading, setIsIndicatorLoading] = React.useState(false);
   const [drawMode, setDrawMode] = React.useState<DrawMode>(null);
+  const [drawingToolsActivated, setDrawingToolsActivated] = React.useState(false);
   const [clearDrawingsSignal, setClearDrawingsSignal] = React.useState(0);
 
   const acquisitions = useAcquisitionDates({
@@ -99,7 +98,13 @@ export function Map({
   }, []);
 
   const toggleDrawMode = (mode: Exclude<DrawMode, null>) => {
+    setDrawingToolsActivated(true);
     setDrawMode((current) => (current === mode ? null : mode));
+  };
+
+  const clearDrawings = () => {
+    setDrawingToolsActivated(true);
+    setClearDrawingsSignal((signal) => signal + 1);
   };
 
   return (
@@ -131,6 +136,7 @@ export function Map({
         center={center}
         clearDrawingsSignal={clearDrawingsSignal}
         drawMode={drawMode}
+        drawingToolsActivated={drawingToolsActivated}
         mapRef={mapRef}
         onDrawingComplete={() => setDrawMode(null)}
         onSaveKml={handleSaveKml}
@@ -143,7 +149,7 @@ export function Map({
 
       <MapControls
         drawMode={drawMode}
-        onClearDrawings={() => setClearDrawingsSignal((signal) => signal + 1)}
+        onClearDrawings={clearDrawings}
         onResetView={() => mapRef.current?.setView(center, zoom)}
         onToggleDrawMode={toggleDrawMode}
         onZoomIn={() => mapRef.current?.zoomIn()}

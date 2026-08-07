@@ -1,18 +1,23 @@
-import type * as React from 'react';
+import * as React from 'react';
 import type L from 'leaflet';
 import { MapContainer, TileLayer, WMSTileLayer } from 'react-leaflet';
 
 import { appConfig } from '@/app/config';
 import { DEFAULT_MAX_CLOUD_COVERAGE } from '@/features/acquisitions/domain/cloud-coverage';
 
-import { DrawControl } from './DrawControl';
 import type { IndicatorDefinition } from './indicator-definitions';
 import type { DrawMode } from './map-types';
+
+const DrawControl = React.lazy(async () => {
+  const module = await import('./DrawControl');
+  return { default: module.DrawControl };
+});
 
 interface MapCanvasProps {
   center: [number, number];
   clearDrawingsSignal: number;
   drawMode: DrawMode;
+  drawingToolsActivated: boolean;
   mapRef: React.MutableRefObject<L.Map | null>;
   onDrawingComplete: () => void;
   onSaveKml: (kml: string) => void;
@@ -27,6 +32,7 @@ export function MapCanvas({
   center,
   clearDrawingsSignal,
   drawMode,
+  drawingToolsActivated,
   mapRef,
   onDrawingComplete,
   onSaveKml,
@@ -63,12 +69,16 @@ export function MapCanvas({
           } as unknown as L.WMSParams}
         />
       )}
-      <DrawControl
-        drawMode={drawMode}
-        clearSignal={clearDrawingsSignal}
-        onSave={onSaveKml}
-        onDrawingComplete={onDrawingComplete}
-      />
+      {drawingToolsActivated && (
+        <React.Suspense fallback={null}>
+          <DrawControl
+            drawMode={drawMode}
+            clearSignal={clearDrawingsSignal}
+            onSave={onSaveKml}
+            onDrawingComplete={onDrawingComplete}
+          />
+        </React.Suspense>
+      )}
     </MapContainer>
   );
 }
