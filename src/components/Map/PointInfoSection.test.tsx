@@ -4,78 +4,81 @@ import { describe, expect, it, vi } from 'vitest';
 import { PointInfoSection } from './PointInfoSection';
 
 describe('PointInfoSection', () => {
-  it('should present traceable point metadata and allow dismissing the selection', () => {
+  it('should present a traceable provider scalar and metadata', () => {
     // ARRANGE
     const onClose = vi.fn();
     render(
       <PointInfoSection
         info={{
-          value: null,
+          parameter: 'CHLA',
+          value: 4.82,
+          unit: 'mg/m³',
+          valueSource: 'provider-scalar',
+          isEstimate: false,
+          method: 'configured-provider-scalar',
+          methodVersion: 'chla-v1',
           quality: 'Unknown',
           coordinates: [51.5096, -0.1099],
-          message: 'Copernicus returned rendered channels, not a scalar analysis value.',
           acquisitionDate: '2026-07-31',
           cloudCoverage: 6.04,
           acquisitionId: 'S2C_SCENE.SAFE',
         }}
-        unit="mg/m³"
         onClose={onClose}
       />,
     );
 
     // ACT
-    const section = screen.getByRole('region', { name: 'Selected point details' });
     fireEvent.click(screen.getByRole('button', { name: 'Close point details' }));
 
     // ASSERT
-    expect(section.textContent).toContain('51.5096, -0.1099');
-    expect(section.textContent).toContain('2026-07-31');
-    expect(section.textContent).toContain('6.04%');
-    expect(section.textContent).toContain('S2C_SCENE.SAFE');
+    expect(screen.getByText('4.82 mg/m³')).toBeVisible();
+    expect(screen.getByText('Copernicus scalar output')).toBeVisible();
+    expect(screen.getByText('configured-provider-scalar (chla-v1)')).toBeVisible();
+    expect(screen.queryByText('Quality')).toBeNull();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('should distinguish a color-derived estimate from a direct measurement', () => {
+  it('should explain an unavailable rendered color without calling it out-of-area', () => {
     // ARRANGE + ACT
     render(
       <PointInfoSection
         info={{
-          value: 2.5,
-          valueSource: 'color-estimate',
-          quality: 'Good',
-          coordinates: [51.5096, -0.1099],
-          message: 'Estimated from the rendered pixel color; this is not a direct sensor measurement.',
+          parameter: 'CHLA',
+          value: null,
+          valueSource: 'unavailable',
+          isEstimate: false,
+          quality: 'Unknown',
+          coordinates: [20.2, -103.05],
+          message: 'Calibrated concentration unavailable. The selected layer returns rendered color channels, but its scientific value-to-color mapping is not available.',
         }}
-        unit="mg/m³"
         onClose={vi.fn()}
       />,
     );
 
     // ASSERT
-    expect(screen.getByText('Estimated value')).toBeTruthy();
-    expect(screen.getByText('2.50 mg/m³')).toBeTruthy();
-    expect(screen.getByText('Good')).toBeTruthy();
-    expect(screen.getByText(/not a direct sensor measurement/i)).toBeTruthy();
+    expect(screen.getByText(/Calibrated concentration unavailable/)).toBeVisible();
+    expect(screen.getByText('Unavailable')).toBeVisible();
+    expect(screen.queryByText('Out of the area of interest')).toBeNull();
   });
 
-  it('should label a pixel outside the scale as outside the area of interest', () => {
+  it('should show out-of-area only for explicit provider no-data', () => {
     // ARRANGE + ACT
     render(
       <PointInfoSection
         info={{
+          parameter: 'CHLA',
           value: null,
+          valueSource: 'unavailable',
+          isEstimate: false,
           isOutOfArea: true,
           quality: 'Unknown',
-          coordinates: [51.5096, -0.1099],
+          coordinates: [0, 0],
         }}
-        unit="mg/m³"
         onClose={vi.fn()}
       />,
     );
 
     // ASSERT
-    expect(screen.getByText('Estimated value')).toBeTruthy();
-    expect(screen.getByText('Out of the area of interest')).toBeTruthy();
-    expect(screen.queryByText('Quality')).toBeNull();
+    expect(screen.getByText('Out of the area of interest')).toBeVisible();
   });
 });

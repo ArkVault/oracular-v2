@@ -1,16 +1,10 @@
 import { X } from 'lucide-react';
 
-import {
-  createMeasurementGradient,
-  type MeasurementScale,
-} from '@/features/analysis/domain/measurement-scale';
-
 import type { IndicatorDefinition } from './indicator-definitions';
 import { PointInfoSection, type PointInfoData } from './PointInfoSection';
 
 interface AnalysisDetailsPanelProps {
   indicator: IndicatorDefinition;
-  measurementScale?: MeasurementScale;
   onClearPoint: () => void;
   onClose: () => void;
   pointInfo: PointInfoData | null;
@@ -18,7 +12,6 @@ interface AnalysisDetailsPanelProps {
 
 export function AnalysisDetailsPanel({
   indicator,
-  measurementScale,
   onClearPoint,
   onClose,
   pointInfo,
@@ -34,7 +27,6 @@ export function AnalysisDetailsPanel({
       {pointInfo && (
         <PointInfoSection
           info={pointInfo}
-          unit={measurementScale?.unit}
           onClose={onClearPoint}
         />
       )}
@@ -51,26 +43,12 @@ export function AnalysisDetailsPanel({
               ))}
             </div>
           </div>
-        ) : indicator.type === 'natural' ? null : measurementScale ? (
-          <div className="oracular-legend-card" aria-label="Measurement range">
-            <div className="oracular-continuous-legend">
-              <div className="oracular-continuous-legend__values">
-                {[...measurementScale.values].reverse().map((value) => (
-                  <span key={value}>{value}</span>
-                ))}
-              </div>
-              <div className="oracular-continuous-legend__bar">
-                <div
-                  aria-label={`${indicator.name} color scale`}
-                  style={{ backgroundImage: createMeasurementGradient(measurementScale) }}
-                />
-              </div>
-              <div className="oracular-continuous-legend__unit">{measurementScale.unit}</div>
-            </div>
-          </div>
-        ) : (
+        ) : indicator.type === 'natural' ? null : (
           <div className="oracular-legend-card">
-            <div className="oracular-legend-label">Measurement range unavailable</div>
+            <div className="oracular-legend-label">Calibrated measurement range unavailable</div>
+            <p className="oracular-layer-description">
+              The configured provider palette and scientific value mapping are not available.
+            </p>
           </div>
         )}
         <p className="oracular-layer-description">{indicator.description}</p>

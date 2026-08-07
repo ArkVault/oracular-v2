@@ -6,7 +6,6 @@ import 'react-day-picker/dist/style.css';
 import { appConfig } from '@/app/config';
 import { appServices, type AppServices } from '@/app/services';
 import { ParameterLoader } from '@/components/UI/ParameterLoader';
-import { getMeasurementScale } from '@/features/analysis/domain/measurement-scale';
 import type { PlaceSearchResult } from '@/features/place-search/domain/place';
 
 import { AnalysisDetailsPanel } from './AnalysisDetailsPanel';
@@ -60,11 +59,6 @@ export function Map({
     selectedIndicator,
     selectedLayer,
   });
-
-  const selectedMeasurementScale =
-    selectedIndicator.type === 'natural' || selectedIndicator.type === 'discrete'
-      ? undefined
-      : getMeasurementScale(selectedIndicator.layer);
 
   const handleIndicatorSelect = async (indicator: IndicatorDefinition) => {
     setIsIndicatorLoading(true);
@@ -166,7 +160,6 @@ export function Map({
       {isDetailVisible && (
         <AnalysisDetailsPanel
           indicator={selectedIndicator}
-          measurementScale={selectedMeasurementScale}
           onClearPoint={pointAnalysis.clear}
           onClose={() => setIsDetailVisible(false)}
           pointInfo={pointAnalysis.pointInfo}

@@ -7,7 +7,6 @@ import {
   createNaturalColorPointInfo,
   createPointInfoError,
 } from '../create-point-info';
-import { createFeatureInfoViewport } from '../create-feature-info-viewport';
 import type { IndicatorDefinition } from '../indicator-definitions';
 import type { PointInfoData } from '../PointInfoSection';
 
@@ -52,25 +51,21 @@ export function usePointAnalysis({
             to: new Date(`${selectedAcquisitionDate}T23:59:59.999Z`),
           }
         : undefined;
-      const viewport = mapRef.current
-        ? createFeatureInfoViewport(mapRef.current, event)
-        : undefined;
       const result = await provider.get({
         layer: selectedLayer,
         point,
-        ...(viewport ? { viewport } : {}),
         maxCloudCoverage: 10,
         ...(timeRange ? { timeRange } : {}),
       });
 
-      setPointInfo(createAnalysisPointInfo(result, point, selectedLayer));
+      setPointInfo(createAnalysisPointInfo(result, point));
     } catch (analysisError) {
       console.error('Error fetching pixel info:', analysisError);
       setPointInfo(createPointInfoError(point));
     } finally {
       setIsLoading(false);
     }
-  }, [mapRef, provider, selectedAcquisitionDate, selectedIndicator, selectedLayer]);
+  }, [provider, selectedAcquisitionDate, selectedIndicator, selectedLayer]);
 
   React.useEffect(() => {
     const map = mapRef.current;

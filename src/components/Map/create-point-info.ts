@@ -2,7 +2,6 @@ import type {
   FeatureInfoResult,
   GeoPoint,
 } from '@/features/analysis/domain/feature-info';
-import { classifyWaterQuality } from '@/features/analysis/domain/quality';
 
 import type { PointInfoData } from './PointInfoSection';
 
@@ -12,7 +11,10 @@ function coordinatesFrom(point: GeoPoint): [number, number] {
 
 export function createNaturalColorPointInfo(point: GeoPoint): PointInfoData {
   return {
+    parameter: 'Natural Color',
     value: null,
+    valueSource: 'unavailable',
+    isEstimate: false,
     quality: 'Unknown',
     coordinates: coordinatesFrom(point),
     message: 'Please select a water quality parameter to view point values',
@@ -22,16 +24,21 @@ export function createNaturalColorPointInfo(point: GeoPoint): PointInfoData {
 export function createAnalysisPointInfo(
   result: FeatureInfoResult,
   point: GeoPoint,
-  layer: string,
 ): PointInfoData {
   return {
+    parameter: result.parameter,
     value: result.value,
-    ...(result.valueSource ? { valueSource: result.valueSource } : {}),
+    ...(result.unit ? { unit: result.unit } : {}),
+    valueSource: result.valueSource,
+    isEstimate: result.isEstimate,
+    ...(result.method ? { method: result.method } : {}),
+    ...(result.methodVersion ? { methodVersion: result.methodVersion } : {}),
+    ...(result.confidence ? { confidence: result.confidence } : {}),
+    ...(result.uncertainty !== undefined ? { uncertainty: result.uncertainty } : {}),
+    ...(result.colorDistance !== undefined ? { colorDistance: result.colorDistance } : {}),
+    ...(result.algorithmReference ? { algorithmReference: result.algorithmReference } : {}),
     ...(result.isOutOfArea ? { isOutOfArea: true } : {}),
-    quality:
-      result.value === null
-        ? 'Unknown'
-        : classifyWaterQuality(result.value, layer),
+    quality: 'Unknown',
     coordinates: coordinatesFrom(point),
     ...(result.message ? { message: result.message } : {}),
     ...(result.acquisitionId ? { acquisitionId: result.acquisitionId } : {}),
@@ -46,7 +53,10 @@ export function createAnalysisPointInfo(
 
 export function createPointInfoError(point: GeoPoint): PointInfoData {
   return {
+    parameter: 'Unknown',
     value: null,
+    valueSource: 'unavailable',
+    isEstimate: false,
     quality: 'Unknown',
     coordinates: coordinatesFrom(point),
     message: 'Unable to load a real Copernicus value for this point.',
