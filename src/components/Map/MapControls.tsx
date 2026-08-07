@@ -20,7 +20,7 @@ export function MapControls({
   onZoomOut,
 }: MapControlsProps) {
   return (
-    <div className="orber-map-controls" aria-label="Map controls">
+    <div className="oracular-map-controls" aria-label="Map controls">
       <button
         className={drawMode === 'polygon' ? 'is-active' : ''}
         onClick={() => onToggleDrawMode('polygon')}

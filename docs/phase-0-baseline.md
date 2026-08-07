@@ -1,4 +1,4 @@
-# Orber — Phase 0 Baseline
+# Oracular V2 — Phase 0 Baseline
 
 **Fecha:** 2026-08-01
 **Estado:** Auditoría read-only completada
@@ -20,7 +20,7 @@ La aplicación puede ejecutarse y Vite genera un bundle, pero el repositorio tod
 | Git hygiene | Crítico | 23,065 archivos de `node_modules` rastreados |
 | Task Master | Roto | Falta `scripts/modules/commands.js` |
 | Vercel | Parcial | CLI instalada; proyecto/configuración reproducible todavía ausente |
-| Documentación | Incorrecta | README y `.env.example` describen Task Master, no Orber |
+| Documentación | Incorrecta | README y `.env.example` describen Task Master, no Oracular V2 |
 
 ## 2. Evidencia
 
@@ -106,7 +106,7 @@ No debe realizarse una limpieza destructiva hasta clasificar y preservar todos l
 import { runCLI } from './modules/commands.js';
 ```
 
-`scripts/modules/commands.js` no existe, por lo que los tres comandos están rotos. Además, las numerosas dependencias de servidor/IA/CLI parecen pertenecer a esta integración y no al frontend Orber.
+`scripts/modules/commands.js` no existe, por lo que los tres comandos están rotos. Además, las numerosas dependencias de servidor/IA/CLI parecen pertenecer a esta integración y no al frontend Oracular V2.
 
 ### Vercel
 
@@ -117,7 +117,7 @@ import { runCLI } from './modules/commands.js';
 
 ### Documentación y entorno
 
-- README documenta Task Master en lugar de Orber.
+- README documenta Task Master en lugar de Oracular V2.
 - `.env.example` solo contiene Anthropic/Perplexity/Task Master.
 - `src` no utiliza actualmente `import.meta.env`.
 - No hay secretos rastreados detectados en archivos `.env*`.
@@ -159,11 +159,11 @@ git status → solo cambios intencionales y revisables
 
 ### P0.4 — Resolver Task Master
 
-**Recomendación:** retirarlo de Orber junto con scripts, documentación y dependencias exclusivas.
+**Recomendación:** retirarlo de Oracular V2 junto con scripts, documentación y dependencias exclusivas.
 
 Alternativa: restaurar íntegramente `scripts/modules` y aislar su grafo fuera del runtime del frontend.
 
-**Aceptación:** ningún script publicado falla y README describe Orber.
+**Aceptación:** ningún script publicado falla y README describe Oracular V2.
 
 ### P0.5 — Establecer gates reales
 
@@ -185,9 +185,9 @@ Alternativa: restaurar íntegramente `scripts/modules` y aislar su grafo fuera d
 
 **Aceptación:** `npm ls --depth=0` no contiene dependencias extraneous o invalid.
 
-### P1.2 — Documentar Orber y variables
+### P1.2 — Documentar Oracular V2 y variables
 
-- [ ] Reemplazar README por instalación y operación de Orber.
+- [ ] Reemplazar README por instalación y operación de Oracular V2.
 - [ ] Documentar desarrollo, gates, Preview y Production.
 - [ ] Reducir `.env.example` a variables realmente utilizadas.
 - [ ] Documentar que secretos OAuth/Copernicus nunca usan `VITE_*`.

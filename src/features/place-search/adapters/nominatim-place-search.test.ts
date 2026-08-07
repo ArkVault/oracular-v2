@@ -3,6 +3,45 @@ import { describe, expect, it, vi } from 'vitest';
 import { NominatimPlaceSearchProvider } from './nominatim-place-search';
 
 describe('NominatimPlaceSearchProvider', () => {
+  it('should use the browser global fetch without rebinding its receiver', async () => {
+    // ARRANGE
+    const browserFetch = vi.fn(function (this: unknown) {
+      if (this !== globalThis && this !== undefined) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+    vi.stubGlobal('fetch', browserFetch);
+    const provider = new NominatimPlaceSearchProvider(
+      'https://search.example.test/search',
+    );
+
+    // ACT
+    const results = await provider.search('London');
+
+    // ASSERT
+    expect(results).toEqual([]);
+    expect(browserFetch).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it('should return no places when the provider payload is not an array', async () => {
+    // ARRANGE
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'unexpected-shape' }), { status: 200 }),
+    );
+    const provider = new NominatimPlaceSearchProvider(
+      'https://search.example.test/search',
+      fetcher as typeof fetch,
+    );
+
+    // ACT
+    const results = await provider.search('London');
+
+    // ASSERT
+    expect(results).toEqual([]);
+  });
+
   it('should encode the query and map only valid provider results', async () => {
     // ARRANGE
     const fetcher = vi.fn().mockResolvedValue(

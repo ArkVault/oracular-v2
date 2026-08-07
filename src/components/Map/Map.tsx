@@ -1,13 +1,11 @@
 import * as React from 'react';
 import type L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
 import 'react-day-picker/dist/style.css';
 
 import { appConfig } from '@/app/config';
 import { appServices, type AppServices } from '@/app/services';
 import { ParameterLoader } from '@/components/UI/ParameterLoader';
-import { getMeasurementScale } from '@/features/analysis/domain/measurement-scale';
 import type { PlaceSearchResult } from '@/features/place-search/domain/place';
 
 import { AnalysisDetailsPanel } from './AnalysisDetailsPanel';
@@ -22,7 +20,6 @@ import { MapHeader } from './MapHeader';
 import type { DrawMode } from './map-types';
 
 import '../UI/parameter-loader.css';
-import './leaflet-draw-override.css';
 import './loader.css';
 import './map-ui.css';
 
@@ -46,6 +43,7 @@ export function Map({
   const [selectedLayer, setSelectedLayer] = React.useState('');
   const [isIndicatorLoading, setIsIndicatorLoading] = React.useState(false);
   const [drawMode, setDrawMode] = React.useState<DrawMode>(null);
+  const [drawingToolsActivated, setDrawingToolsActivated] = React.useState(false);
   const [clearDrawingsSignal, setClearDrawingsSignal] = React.useState(0);
 
   const acquisitions = useAcquisitionDates({
@@ -61,11 +59,6 @@ export function Map({
     selectedIndicator,
     selectedLayer,
   });
-
-  const selectedMeasurementScale =
-    selectedIndicator.type === 'natural' || selectedIndicator.type === 'discrete'
-      ? undefined
-      : getMeasurementScale(selectedIndicator.layer);
 
   const handleIndicatorSelect = async (indicator: IndicatorDefinition) => {
     setIsIndicatorLoading(true);
@@ -99,7 +92,13 @@ export function Map({
   }, []);
 
   const toggleDrawMode = (mode: Exclude<DrawMode, null>) => {
+    setDrawingToolsActivated(true);
     setDrawMode((current) => (current === mode ? null : mode));
+  };
+
+  const clearDrawings = () => {
+    setDrawingToolsActivated(true);
+    setClearDrawingsSignal((signal) => signal + 1);
   };
 
   return (
@@ -131,6 +130,7 @@ export function Map({
         center={center}
         clearDrawingsSignal={clearDrawingsSignal}
         drawMode={drawMode}
+        drawingToolsActivated={drawingToolsActivated}
         mapRef={mapRef}
         onDrawingComplete={() => setDrawMode(null)}
         onSaveKml={handleSaveKml}
@@ -143,7 +143,7 @@ export function Map({
 
       <MapControls
         drawMode={drawMode}
-        onClearDrawings={() => setClearDrawingsSignal((signal) => signal + 1)}
+        onClearDrawings={clearDrawings}
         onResetView={() => mapRef.current?.setView(center, zoom)}
         onToggleDrawMode={toggleDrawMode}
         onZoomIn={() => mapRef.current?.zoomIn()}
@@ -160,7 +160,6 @@ export function Map({
       {isDetailVisible && (
         <AnalysisDetailsPanel
           indicator={selectedIndicator}
-          measurementScale={selectedMeasurementScale}
           onClearPoint={pointAnalysis.clear}
           onClose={() => setIsDetailVisible(false)}
           pointInfo={pointAnalysis.pointInfo}

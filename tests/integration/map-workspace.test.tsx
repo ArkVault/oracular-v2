@@ -69,37 +69,10 @@ vi.mock('react-leaflet', async () => {
 });
 
 vi.mock('../../src/components/Map/DrawControl', () => ({
-  DrawControl: () => null,
+  DrawControl: () => <div data-testid="draw-control" />,
 }));
 
 import { Map } from '../../src/components/Map/Map';
-
-const parameterEstimateCases = [
-  {
-    parameter: 'Chlorophyll-a',
-    layer: 'CHLA',
-    renderedChannels: [201, 192, 155],
-    expectedMeasurement: '2.50 mg/m³',
-  },
-  {
-    parameter: 'Dissolved Oxygen',
-    layer: 'DISSOLVED-OXYGEN',
-    renderedChannels: [53, 56, 56],
-    expectedMeasurement: '8.00 mg/L',
-  },
-  {
-    parameter: 'Total Suspended Solids',
-    layer: 'TOTAL-SUSPENDED-SOLIDS',
-    renderedChannels: [178, 101, 77],
-    expectedMeasurement: '70.00 mg/L',
-  },
-  {
-    parameter: 'Turbidity',
-    layer: 'TURBIDITY',
-    renderedChannels: [94, 24, 69],
-    expectedMeasurement: '35.00 NTU',
-  },
-] as const;
 
 describe('Map workspace integration', () => {
   beforeEach(() => {
@@ -140,12 +113,22 @@ describe('Map workspace integration', () => {
     expect(screen.queryByRole('button', { name: 'Dashboard' })).toBeNull();
   });
 
-  it('should expose the modular Orber navigation and keep overlays mutually exclusive', () => {
+  it('should defer drawing tools until the first drawing command', async () => {
+    render(<Map />);
+
+    expect(screen.queryByTestId('draw-control')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Draw polygon' }));
+
+    expect(await screen.findByTestId('draw-control')).toBeVisible();
+  });
+
+  it('should expose the modular Oracular V2 navigation and keep overlays mutually exclusive', () => {
     // ARRANGE
     render(<Map />);
 
     // ACT + ASSERT
-    expect(screen.getByRole('heading', { name: 'Orber' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Oracular V2' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Search' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Dates' }));
@@ -253,21 +236,19 @@ describe('Map workspace integration', () => {
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', 'CHLA');
     const details = screen.getByRole('complementary', { name: 'Chlorophyll-a details' });
     expect(within(details).getByRole('button', { name: 'Close details' })).toBeVisible();
-    expect(within(details).getByLabelText('Measurement range')).toBeVisible();
-    expect(within(details).getByText('0')).toBeVisible();
-    expect(within(details).getByText('2.5')).toBeVisible();
-    expect(within(details).getByText('7')).toBeVisible();
-    expect(within(details).getByText('10')).toBeVisible();
-    expect(within(details).getByText('mg/m³')).toBeVisible();
-    expect(within(details).getByLabelText('Chlorophyll-a color scale')).toHaveStyle({
-      backgroundImage:
-        'linear-gradient(to top, #d5d695 0%, #c9c09b 25%, #004b43 70%, #003c3e 100%)',
-    });
+    expect(within(details).getByText('Calibrated measurement range unavailable')).toBeVisible();
+    expect(within(details).getByText(/provider palette and scientific value mapping/i)).toBeVisible();
+    expect(within(details).queryByLabelText('Chlorophyll-a color scale')).toBeNull();
   });
 
-  it.each(parameterEstimateCases)(
-    'should estimate a clicked scale color with the $parameter scale and unit',
-    async ({ parameter, layer, renderedChannels, expectedMeasurement }) => {
+  it.each([
+    ['Chlorophyll-a', 'CHLA', ['0.80635', '0.760724', '0.607419']],
+    ['Dissolved Oxygen', 'DISSOLVED-OXYGEN', ['0.1953', '0.1975', '0.1992']],
+    ['Total Suspended Solids', 'TOTAL-SUSPENDED-SOLIDS', ['0.528004', '0.056008', '0.471996']],
+    ['Turbidity', 'TURBIDITY', ['0', '0', '0']],
+  ])(
+    'should keep the uncalibrated %s rendered channels unavailable',
+    async (parameter, layer, renderedChannels) => {
     // ARRANGE
     vi.useFakeTimers();
     const fetchMock = vi.fn()
@@ -298,14 +279,14 @@ describe('Map workspace integration', () => {
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText('Estimated value')).toBeVisible();
-    expect(within(pointDetails).getByText(expectedMeasurement)).toBeVisible();
-    expect(within(pointDetails).getByText(/not a direct sensor measurement/i)).toBeVisible();
+    expect(within(pointDetails).getByText(/Calibrated concentration unavailable/)).toBeVisible();
+    expect(within(pointDetails).getByText('Unavailable')).toBeVisible();
+    expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', layer);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`QUERY_LAYERS=${layer}`);
   });
 
-  it('should keep a brightness-shifted scale pixel inside the area of interest', async () => {
+  it('should display a traceable provider scalar with its unit and method', async () => {
     // ARRANGE
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue(
@@ -313,7 +294,15 @@ describe('Map workspace integration', () => {
         type: 'FeatureCollection',
         features: [{
           type: 'Feature',
-          properties: { out1: '140.7', out2: '134.4', out3: '108.5' },
+          properties: {
+            id: 'S2C_SCENE.SAFE',
+            date: '2026-07-31',
+            cloudCoverPercentage: 6.04,
+            value: '4.82',
+            unit: 'mg/m³',
+            method: 'configured-provider-scalar',
+            methodVersion: 'chla-v1',
+          },
         }],
       }), { status: 200 }),
     );
@@ -328,26 +317,29 @@ describe('Map workspace integration', () => {
     await act(async () => {
       await mapHarness.clickHandler?.({
         latlng: { lat: 51.5096, lng: -0.1099 },
-        containerPoint: { x: 614.4, y: 382.8 },
       });
     });
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText('2.50 mg/m³')).toBeVisible();
+    expect(within(pointDetails).getByText('4.82 mg/m³')).toBeVisible();
+    expect(within(pointDetails).getByText('Copernicus scalar output')).toBeVisible();
+    expect(within(pointDetails).getByText('configured-provider-scalar (chla-v1)')).toBeVisible();
+    expect(within(pointDetails).getByText('2026-07-31')).toBeVisible();
+    expect(within(pointDetails).getByText('6.04%')).toBeVisible();
     expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
     const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect(Object.fromEntries(requestUrl.searchParams)).toMatchObject({
-      CRS: 'EPSG:3857',
-      BBOX: '-14000,1000,-5000,6000',
-      WIDTH: '256',
-      HEIGHT: '256',
-      I: '213',
-      J: '25',
+      CRS: 'EPSG:4326',
+      BBOX: '51.5095,-0.1100,51.5097,-0.1098',
+      WIDTH: '1',
+      HEIGHT: '1',
+      I: '0',
+      J: '0',
     });
   });
 
-  it('should show an out-of-area result when a clicked pixel is outside the scale', async () => {
+  it('should show out-of-area only when the provider supplies an explicit no-data mask', async () => {
     // ARRANGE
     vi.useFakeTimers();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
@@ -355,7 +347,7 @@ describe('Map workspace integration', () => {
         type: 'FeatureCollection',
         features: [{
           type: 'Feature',
-          properties: { out1: '8', out2: '8', out3: '8' },
+          properties: { dataMask: 0, out1: '0', out2: '0', out3: '0' },
         }],
       }), { status: 200 }),
     ));
@@ -372,7 +364,42 @@ describe('Map workspace integration', () => {
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText('Estimated value')).toBeVisible();
+    expect(within(pointDetails).getByText('Value')).toBeVisible();
     expect(within(pointDetails).getByText('Out of the area of interest')).toBeVisible();
+  });
+
+  it('should issue the same analytical query for the same point at different zoom levels', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { out1: '0.8', out2: '0.7', out3: '0.6' },
+        }],
+      }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<Map />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    // ACT
+    mapHarness.map.getZoom = vi.fn(() => 10);
+    await act(async () => {
+      await mapHarness.clickHandler?.({ latlng: { lat: 20.2, lng: -103.05 } });
+    });
+    mapHarness.map.getZoom = vi.fn(() => 15);
+    await act(async () => {
+      await mapHarness.clickHandler?.({ latlng: { lat: 20.2, lng: -103.05 } });
+    });
+
+    // ASSERT
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls).toHaveLength(2);
+    expect(urls[0]).toBe(urls[1]);
   });
 });

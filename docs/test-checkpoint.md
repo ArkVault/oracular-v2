@@ -29,9 +29,9 @@
 - Nubosidad ausente, negativa, mayor a 100 o `NaN` no es elegible.
 - La UI primaria renderiza controles de análisis.
 - Seleccionar clorofila monta la capa WMS `CHLA`.
-- El Warp Loader importado de `orber-geospatial-insights` solo aparece durante carga y expone un estado accesible.
-- El shell modular muestra la marca Orber, búsqueda accesible y mantiene Dates/Sensors mutuamente excluyentes.
-- El localhost responde con el shell HTML de Orber.
+- El Warp Loader importado de `oracular-v2` solo aparece durante carga y expone un estado accesible.
+- El shell modular muestra la marca Oracular V2, búsqueda accesible y mantiene Dates/Sensors mutuamente excluyentes.
+- El localhost responde con el shell HTML de Oracular V2.
 
 ## Gates
 
@@ -63,7 +63,7 @@ npm run test:smoke    → PASS
 Baseline unitaria, integración, smoke, cobertura y gate local: ✅
 CI: ✅; E2E: pendiente.
 
-**Fase 4 — Responsive, accesibilidad y UX:** parcial. El shell visual de `orber-geospatial-insights` quedó adaptado a la lógica real, verificado manualmente en 375 y 1440 px sin overflow horizontal. Falta formalizar E2E responsive y revisar contenido/descripciones.
+**Fase 4 — Responsive, accesibilidad y UX:** parcial. El shell visual de `oracular-v2` quedó adaptado a la lógica real, verificado manualmente en 375 y 1440 px sin overflow horizontal. Falta formalizar E2E responsive y revisar contenido/descripciones.
 
 ## Checkpoint — GetFeatureInfo real
 
@@ -170,3 +170,29 @@ a `main` mediante un release controlado.
 **Roadmap sync:** la violación principal de Single Responsibility del workspace
 queda corregida y verificada. El siguiente refactor debe centrarse en lazy
 loading y presupuesto de bundle, no en añadir capas abstractas adicionales.
+
+## Checkpoint — Patrones de diseño y carga diferida
+
+**Fecha:** 2026-08-07
+**Test status:** ✅ TESTED
+
+- TDD rojo confirmó la ausencia del reducer de overlays y del mapper de detalle
+  antes de implementarlos.
+- Un reducer tipado aplica State a Dates, Sensors y Search, garantizando que sólo
+  un overlay esté activo.
+- Una Factory/Mapper pura concentra la traducción de `FeatureInfoResult` al
+  modelo presentado por el panel derecho.
+- React DayPicker y Leaflet Draw se separaron del bundle inicial; dibujo se
+  descarga al ejecutar el primer comando y permanece montado para conservar las
+  geometrías.
+- El bundle JS principal bajó de 481.23 kB (144.67 kB gzip) a 364.85 kB
+  (116.89 kB gzip): 24.18% menos sin comprimir y 19.20% menos gzip.
+- Regresión completa: 16 suites y 70 tests pasan.
+- Cobertura crítica sin regresión: 97.32% statements, 92.02% branches, 97.77%
+  functions y 98.09% lines.
+- `npm run check`: lint, typecheck, cobertura y build pasan.
+
+**Roadmap sync:** las oportunidades inmediatas State, Factory/Mapper y lazy
+loading quedan completadas y verificadas. El siguiente patrón debe responder a
+una capacidad concreta; la prioridad funcional continúa siendo una salida
+científica escalar validada y después el contrato de autenticación.

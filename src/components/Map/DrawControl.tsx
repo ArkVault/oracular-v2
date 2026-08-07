@@ -3,6 +3,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
+import './leaflet-draw-override.css';
 
 interface DrawControlProps {
   drawMode: 'polygon' | 'rectangle' | null;

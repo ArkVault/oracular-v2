@@ -1,11 +1,11 @@
-# Orber architecture
+# Oracular V2 architecture
 
 **Status:** accepted for the demo
 **Last updated:** 2026-08-06
 
 ## Decision
 
-Orber uses a feature-first React architecture with Ports & Adapters only at
+Oracular V2 uses a feature-first React architecture with Ports & Adapters only at
 external boundaries. This gives the demo testable seams without paying the
 cost of a full Clean Architecture implementation.
 

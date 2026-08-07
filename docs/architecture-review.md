@@ -1,4 +1,4 @@
-# Orber — Architecture Review and Migration Plan
+# Oracular V2 — Architecture Review and Migration Plan
 
 > **Historical baseline (2026-08-01).** Slices B-D are now implemented and the
 > current dependency rules live in [`docs/architecture.md`](./architecture.md).
@@ -13,7 +13,7 @@
 
 ### Estado actual
 
-Orber es una SPA React + TypeScript + Vite con estructura nominal por componentes, pero comportamiento monolítico. `src/App.tsx` solo compone `Layout` y `Map`; `src/components/Map/Map.tsx` concentra:
+Oracular V2 es una SPA React + TypeScript + Vite con estructura nominal por componentes, pero comportamiento monolítico. `src/App.tsx` solo compone `Layout` y `Map`; `src/components/Map/Map.tsx` concentra:
 
 - Configuración y render de Leaflet.
 - Navegación y paneles.
@@ -62,7 +62,7 @@ No se recomienda migrar a microservicios, CQRS, Clean Architecture completa ni m
 
 ## 3. Design Pattern Opportunities
 
-| Anti-pattern actual | Patrón recomendado | Aplicación en Orber |
+| Anti-pattern actual | Patrón recomendado | Aplicación en Oracular V2 |
 |---|---|---|
 | HTTP directo desde UI | Adapter + Port | `CopernicusCatalogAdapter`, `WmsFeatureInfoAdapter`, `NominatimAdapter` |
 | Condicionales por indicador | Strategy | Cada `IndicatorDefinition` aporta su regla de calidad |

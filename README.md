@@ -1,6 +1,6 @@
-# Orber Geospatial Insights
+# Oracular V2
 
-Orber is a browser-based geospatial analysis demo for exploring Copernicus
+Oracular V2 is a browser-based geospatial analysis demo for exploring Copernicus
 imagery and environmental indicators without requiring a desktop GIS. The
 application combines an interactive Leaflet map, Sentinel Hub WMS layers,
 acquisition-date discovery and point-level analysis in a responsive interface.
@@ -8,8 +8,6 @@ acquisition-date discovery and point-level analysis in a responsive interface.
 The repository currently represents a technical demo. It is suitable for
 product validation and controlled testing, but it should not yet be treated as
 a production scientific system.
-
-![Captura de pantalla 2025-06-28 a la(s) 2 15 49 a m](https://github.com/user-attachments/assets/520317b3-cd4c-4f1b-b88c-8b49fc2bc7d3)
 
 ## Current capabilities
 
@@ -31,8 +29,6 @@ a production scientific system.
 - Local quality gate covering lint, TypeScript, automated tests, coverage and
   production build.
 
-![orb4](https://github.com/user-attachments/assets/dc3208c0-907e-4b7f-937d-5402eb0da8a2)
-
 ## How the demo works
 
 1. The user searches for a place or navigates directly on the map.
@@ -43,14 +39,12 @@ a production scientific system.
 5. Clicking the map requests feature information for the selected parameter and
    displays the result, provenance and quality state in the analysis panel.
 
-   ![orb1](https://github.com/user-attachments/assets/442d78db-2d00-423b-be5a-9e4abbf6a243)
-
 ## Scientific interpretation
 
-Orber distinguishes between scalar measurements and rendered image channels.
+Oracular V2 distinguishes between scalar measurements and rendered image channels.
 If Copernicus returns a scalar value, the application can present it with the
 configured unit and quality range. If the provider returns only RGB or rendered
-channels, Orber does not label those channels as a scientific measurement.
+channels, Oracular V2 does not label those channels as a scientific measurement.
 
 Color-derived values are estimates based on the displayed scale. They are useful
 for interface and workflow validation, but they are not a replacement for a
@@ -82,6 +76,21 @@ Dependency rules:
   providers directly.
 - Concrete providers are selected in `src/app/services.ts`.
 - Browser configuration is validated in `src/app/config.ts`.
+
+Design patterns are applied only where they remove a demonstrated source of
+complexity:
+
+- A reducer implements the State pattern for the Dates, Sensors and Search
+  overlays. One discriminated state makes their mutual exclusion explicit.
+- A pure Factory/Mapper translates Copernicus feature-info results into the
+  point-detail presentation model, including quality, provenance and no-data
+  states.
+- React lazy boundaries defer React DayPicker and Leaflet Draw until the user
+  opens the calendar or activates a drawing command.
+
+These are small functional abstractions rather than framework layers. The demo
+keeps React state local and introduces a new port only for a real external
+boundary.
 
 See [Architecture](docs/architecture.md),
 [architecture decision record](docs/adr/0001-demo-architecture.md) and the
@@ -147,8 +156,8 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The latest verified local checkpoint contains 14 test suites
-and 61 tests. Coverage for the configured critical modules is 97.32 percent
+production build. The latest verified local checkpoint contains 16 test suites
+and 70 tests. Coverage for the configured critical modules is 97.32 percent
 statements, 92.02 percent branches, 97.77 percent functions and 98.09 percent
 lines.
 
@@ -171,6 +180,16 @@ Individual commands:
 Detailed strategy and results are available in
 [Test strategy](docs/test-strategy.md) and
 [Test checkpoint](docs/test-checkpoint.md).
+
+### Bundle strategy
+
+The production build uses feature-level lazy boundaries for optional tooling.
+The verified main JavaScript bundle decreased from 481.23 kB (144.67 kB gzip)
+to 364.85 kB (116.89 kB gzip), a reduction of 24.18 percent uncompressed and
+19.20 percent gzip. The calendar is emitted as a 72.76 kB chunk (19.28 kB gzip),
+while drawing is emitted as a 67.77 kB chunk (14.55 kB gzip) plus its deferred
+CSS. File hashes vary between builds; these measurements are a local baseline,
+not a permanent performance budget.
 
 ## Deployment
 
@@ -243,4 +262,4 @@ npm run check
 Open a focused pull request describing the behavior changed, the validation
 performed and any remaining scientific or deployment limitations.
 
-Copyright 2025 Orber. All rights reserved.
+Copyright 2025 Oracular V2. All rights reserved.
