@@ -110,8 +110,8 @@ context.
 ### Installation
 
 ```bash
-git clone https://github.com/ArkVault/orber-geospatial-insights.git
-cd orber-geospatial-insights
+git clone https://github.com/ArkVault/oracular-v2.git
+cd oracular-v2
 npm install
 cp .env.example .env.local
 npm run dev
