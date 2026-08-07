@@ -144,8 +144,15 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The current checkpoint contains 13 test suites and 46 tests,
-with critical-module coverage above the enforced 90 percent thresholds.
+production build. The latest verified local checkpoint contains 13 test suites
+and 53 tests. Coverage for the configured critical modules is 97.27 percent
+statements, 91.57 percent branches, 97.77 percent functions and 98.05 percent
+lines.
+
+Coverage thresholds currently apply to the configured domain and provider
+modules, not to the entire frontend. The localhost smoke test runs separately
+and requires a running application. Browser E2E coverage and automated CI gates
+are still pending.
 
 Individual commands:
 
