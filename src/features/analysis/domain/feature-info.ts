@@ -8,9 +8,26 @@ export interface TimeRange {
   to: Date;
 }
 
+export interface FeatureInfoViewport {
+  crs: 'EPSG:4326' | 'EPSG:3857';
+  bounds: {
+    south: number;
+    west: number;
+    north: number;
+    east: number;
+  };
+  width: number;
+  height: number;
+  pixel: {
+    x: number;
+    y: number;
+  };
+}
+
 export interface FeatureInfoQuery {
   layer: string;
   point: GeoPoint;
+  viewport?: FeatureInfoViewport;
   maxCloudCoverage?: number;
   timeRange?: TimeRange;
 }

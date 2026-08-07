@@ -3,6 +3,7 @@ import type {
   FeatureInfoResult,
 } from '../domain/feature-info';
 import { estimateMeasurementFromRenderedColor } from '../domain/color-measurement-estimate';
+import { getMeasurementScale } from '../domain/measurement-scale';
 import type { FeatureInfoProvider } from '../ports/feature-info-provider';
 
 const POINT_QUERY_DELTA = 0.0001;
@@ -60,6 +61,34 @@ function buildPointBbox({ lat, lng }: FeatureInfoQuery['point']): string {
     .join(',');
 }
 
+function buildViewportParams(viewport: NonNullable<FeatureInfoQuery['viewport']>) {
+  const width = Math.max(1, Math.round(viewport.width));
+  const height = Math.max(1, Math.round(viewport.height));
+  const pixelX = Math.min(width - 1, Math.max(0, Math.round(viewport.pixel.x)));
+  const pixelY = Math.min(height - 1, Math.max(0, Math.round(viewport.pixel.y)));
+
+  return {
+    CRS: viewport.crs,
+    BBOX: (viewport.crs === 'EPSG:4326'
+      ? [
+          viewport.bounds.south,
+          viewport.bounds.west,
+          viewport.bounds.north,
+          viewport.bounds.east,
+        ]
+      : [
+          viewport.bounds.west,
+          viewport.bounds.south,
+          viewport.bounds.east,
+          viewport.bounds.north,
+        ]).join(','),
+    WIDTH: String(width),
+    HEIGHT: String(height),
+    I: String(pixelX),
+    J: String(pixelY),
+  };
+}
+
 export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
   private readonly fetcher: typeof fetch;
 
@@ -79,12 +108,16 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
       REQUEST: 'GetFeatureInfo',
       QUERY_LAYERS: query.layer,
       INFO_FORMAT: 'application/json',
-      BBOX: buildPointBbox(query.point),
-      CRS: 'EPSG:4326',
-      WIDTH: '1',
-      HEIGHT: '1',
-      I: '0',
-      J: '0',
+      ...(query.viewport
+        ? buildViewportParams(query.viewport)
+        : {
+            CRS: 'EPSG:4326',
+            BBOX: buildPointBbox(query.point),
+            WIDTH: '1',
+            HEIGHT: '1',
+            I: '0',
+            J: '0',
+          }),
     };
 
     if (query.maxCloudCoverage !== undefined) {
@@ -146,8 +179,9 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
           }
         : !isOutOfArea && scalarValue === null && outputValues.length > 1
           ? {
-              message:
-                'Copernicus returned rendered channels, not a scalar analysis value.',
+              message: getMeasurementScale(query.layer)
+                ? 'Rendered pixel color is not calibrated in the current measurement scale.'
+                : 'Copernicus returned rendered channels, not a scalar analysis value.',
             }
           : {}),
     };

@@ -78,3 +78,47 @@ CI y E2E: pendientes.
 - La prueba live devolvió escena, fecha y nubosidad reales sin presentar RGB como mg/m³.
 
 **Estado de Fase 1:** parcial. El transporte y la trazabilidad son reales; la configuración actual de `CHLA` devuelve `out1/out2/out3`, por lo que se necesita una capa de salida escalar o Statistical API antes de mostrar un valor científico.
+
+## Checkpoint — Refactor arquitectónico ligero
+
+**Fecha:** 2026-08-06
+**Test status:** ✅ TESTED
+
+- TDD rojo: configuración, fechas y búsqueda fallaron inicialmente porque los
+  módulos y contratos todavía no existían.
+- TDD verde: se añadieron puertos/adaptadores, composición de servicios,
+  configuración validada y bootstrap Leaflet aislado.
+- Regresión completa: 13 suites y 46 tests pasan.
+- Cobertura crítica: 96.73% statements, 91.82% branches, 97.61% functions y
+  97.67% lines.
+- `npm run check`: lint, typecheck, cobertura y build pasan.
+
+**Roadmap sync:** la base mantenible del demo queda completada. El próximo slice
+arquitectónico debe acompañar una capacidad real (auth, catálogo con metadata o
+análisis escalar), no una separación adicional puramente estructural.
+
+## Checkpoint — Detección de color por píxel y zoom
+
+**Fecha:** 2026-08-06
+**Test status:** ⚠️ PARTIAL
+
+- La consulta `GetFeatureInfo` usa ahora el CRS, bounding box, tamaño y posición
+  interna de la tesela WMS de 256 px realmente mostrada por Leaflet.
+- La inversión de la rampa muestrea 256 matices por segmento y tolera cambios
+  moderados de brillo sin aceptar negro/no-data.
+- Un RGB coloreado que no exista en la rampa local ya no se etiqueta como
+  “Out of the area”; se informa como color pendiente de calibración.
+- Verificación live: un píxel verde CHLA devolvió
+  `[0.085889, 0.515674, 0.251921]` y fue identificado como no calibrado; un
+  píxel negro continuó devolviendo “Out of the area of interest”.
+- Regresión completa: 13 suites y 53 tests pasan.
+- Cobertura crítica: 97.27% statements, 91.57% branches, 97.77% functions y
+  98.05% lines.
+
+**Bloqueo científico:** la Configuration API requiere autorización para leer el
+evalscript privado del layer. Para devolver un valor numérico fiable hay que
+incorporar al repositorio sus pares exactos `valor → color` o cambiar el layer
+para que `GetFeatureInfo` exponga el escalar directamente.
+
+**Roadmap sync:** alineación del clic y clasificación no-data completadas;
+calibración científica de las rampas permanece parcial.

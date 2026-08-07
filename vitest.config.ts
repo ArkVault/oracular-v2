@@ -18,9 +18,11 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
       include: [
+        'src/app/config.ts',
         'src/features/**/domain/**/*.ts',
         'src/features/analysis/adapters/copernicus-wms-feature-info.ts',
         'src/features/acquisitions/adapters/copernicus-wfs-acquisition-dates.ts',
+        'src/features/place-search/adapters/nominatim-place-search.ts',
       ],
       exclude: ['src/**/*.test.{ts,tsx}'],
       thresholds: {

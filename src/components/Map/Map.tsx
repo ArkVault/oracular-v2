@@ -22,26 +22,11 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { DrawControl } from './DrawControl';
 import { PointInfoSection, type PointInfoData } from './PointInfoSection';
-
-// Fix Leaflet default marker icon issue
-import L from 'leaflet';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import type L from 'leaflet';
 
 // Add this CSS near the top of your file, after the other imports
 import './leaflet-draw-override.css';
 import './map-ui.css';
-
-// Add these to your imports at the top
-import {
-  Droplets, // for Chlorophyll
-  Wind, // for Dissolved Oxygen
-  Container, // for Total Suspended Solids
-  Waves, // for Turbidity
-  Flame, // for Forest Fires
-  Eye // for Natural Color
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 import { ParameterLoader } from '../UI/ParameterLoader';
 import { Button } from '@/components/UI/button';
@@ -55,125 +40,35 @@ import {
   createMeasurementGradient,
   getMeasurementScale,
 } from '../../features/analysis/domain/measurement-scale';
-import { CopernicusWmsFeatureInfoProvider } from '../../features/analysis/adapters/copernicus-wms-feature-info';
-import { CopernicusWfsAcquisitionDateProvider } from '../../features/acquisitions/adapters/copernicus-wfs-acquisition-dates';
+import { appConfig } from '@/app/config';
+import { appServices, type AppServices } from '@/app/services';
+import {
+  acquisitionDateToLocalDate,
+  localDateToAcquisitionDate,
+  toWmsDayTimeRange,
+} from '@/features/acquisitions/domain/acquisition-date';
 import { DEFAULT_MAX_CLOUD_COVERAGE } from '../../features/acquisitions/domain/cloud-coverage';
+import type { PlaceSearchResult } from '@/features/place-search/domain/place';
+import {
+  INDICATORS,
+  type IndicatorDefinition,
+} from './indicator-definitions';
+import { createFeatureInfoViewport } from './create-feature-info-viewport';
 
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-interface MapProps {
+export interface MapProps {
   center?: [number, number];
   zoom?: number;
+  services?: AppServices;
 }
 
-interface SearchResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
-interface IndicatorBase {
-  name: string;
-  icon: LucideIcon;
-  description: string;
-  quote: string;
-}
-
-interface NaturalIndicator extends IndicatorBase {
-  type: 'natural';
-}
-
-interface DiscreteIndicator extends IndicatorBase {
-  type: 'discrete';
-  layer: string;
-  indicators: Array<{ color: string; label: string }>;
-}
-
-interface ContinuousIndicator extends IndicatorBase {
-  type?: undefined;
-  layer: string;
-}
-
-type Indicator = NaturalIndicator | DiscreteIndicator | ContinuousIndicator;
-
-const WMS_URL = 'https://sh.dataspace.copernicus.eu/ogc/wms/fd8fbb51-cfdf-460d-9839-6dc55ee39ffa';
-const featureInfoProvider = new CopernicusWmsFeatureInfoProvider(WMS_URL);
-const acquisitionDateProvider = new CopernicusWfsAcquisitionDateProvider(WMS_URL);
-
-function acquisitionDateToLocalDate(date: string): Date {
-  const [year, month, day] = date.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function localDateToAcquisitionDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-const indicators: Indicator[] = [
-  {
-    name: 'Natural Color',
-    type: 'natural',
-    icon: Eye,
-    description: 'Natural satellite imagery showing Earth as it appears to the human eye. This view helps identify surface features, vegetation patterns, and water bodies in their true colors using cloud-free imagery for optimal visibility.',
-    quote: 'Reference: ESA (2021). Sentinel-2 User Handbook. European Space Agency.'
-  },
-  {
-    name: 'Chlorophyll-a',
-    icon: Droplets,
-    layer: 'CHLA',
-    description: 'Chlorophyll-a is the primary photosynthetic pigment found in all plants and algae. High concentrations in water bodies indicate algal blooms, which can affect water quality and ecosystem health. Regular monitoring helps identify potential eutrophication issues and assess the overall health of aquatic ecosystems.',
-    quote: 'Reference: Gitelson, A. A., et al. (2008). "A simple semi-analytical model for remote estimation of chlorophyll-a in turbid waters." Remote Sensing of Environment, 112(9), 3582-3593.'
-  },
-  {
-    name: 'Dissolved Oxygen',
-    icon: Wind,
-    layer: 'DISSOLVED-OXYGEN',
-    description: 'Dissolved oxygen (DO) is essential for aquatic life and ecosystem health. Low DO levels can stress or kill fish and other organisms. Levels are affected by temperature, atmospheric pressure, biological activity, and water movement. Healthy water bodies typically maintain DO levels between 6-10 mg/L.',
-    quote: 'Reference: Diaz, R. J., & Rosenberg, R. (2008). "Spreading dead zones and consequences for marine ecosystems." Science, 321(5891), 926-929.'
-  },
-  {
-    name: 'Total Suspended Solids',
-    icon: Container,
-    layer: 'TOTAL-SUSPENDED-SOLIDS',
-    description: 'Total Suspended Solids (TSS) measures particles suspended in water, including sediment, algae, and organic matter. High TSS levels can reduce water clarity, affect aquatic life, and indicate pollution or erosion. It\'s a key indicator of water quality and can impact ecosystem functioning and recreational water use.',
-    quote: 'Reference: Ritchie, J. C., et al. (2003). "Remote sensing techniques to assess water quality." Photogrammetric Engineering & Remote Sensing, 69(6), 695-704.'
-  },
-  {
-    name: 'Turbidity',
-    icon: Waves,
-    layer: 'TURBIDITY',
-    description: 'Turbidity measures water clarity and how much light can penetrate through water. It\'s affected by suspended particles like clay, silt, organic matter, and microorganisms. High turbidity can harm aquatic life by reducing light penetration, increasing water temperature, and decreasing dissolved oxygen levels. It\'s also an important indicator for drinking water quality.',
-    quote: 'Reference: Kirk, J. T. O. (1994). "Light and photosynthesis in aquatic ecosystems." Cambridge University Press, 3rd Edition.'
-  },
-  {
-    name: 'Forest Fire Detection',
-    icon: Flame,
-    type: 'discrete',
-    indicators: [
-      { color: 'bg-red-600', label: 'Active Fires' },
-      { color: 'bg-yellow-500', label: 'Burned Areas' }
-    ],
-    layer: 'INCENDIOS-FORESTALES',
-    description: 'Satellite-based monitoring of forest fires. Red indicators show currently active fires, while yellow areas represent recently burned zones. This information is crucial for emergency response and forest management.',
-    quote: 'Reference: Giglio, L., et al. (2016). "Active fire detection and characterization with the MODIS sensor." Remote Sensing of Environment, 178, 31-41.'
-  }
-];
-
-// Add these new interfaces
-export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
+export function Map({
+  center = [20.2700, -103.2000],
+  zoom = 12,
+  services = appServices,
+}: MapProps) {
   const [isPanelVisible, setIsPanelVisible] = React.useState(true);
   const [isDetailVisible, setIsDetailVisible] = React.useState(true);
-  const [selectedIndicator, setSelectedIndicator] = React.useState<Indicator>(indicators[0]);
+  const [selectedIndicator, setSelectedIndicator] = React.useState<IndicatorDefinition>(INDICATORS[0]);
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [showSensorMenu, setShowSensorMenu] = React.useState(false);
   const [selectedAcquisitionDate, setSelectedAcquisitionDate] = React.useState<string>();
@@ -187,7 +82,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const mapRef = React.useRef<L.Map | null>(null);
   const [pixelInfo, setPixelInfo] = React.useState<PointInfoData | null>(null);
@@ -203,7 +98,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     ? acquisitionDateToLocalDate(selectedAcquisitionDate)
     : undefined;
   const selectedTileTime = selectedAcquisitionDate
-    ? `${selectedAcquisitionDate}T00:00:00Z/${selectedAcquisitionDate}T23:59:59Z`
+    ? toWmsDayTimeRange(selectedAcquisitionDate)
     : undefined;
   const selectedMeasurementScale =
     selectedIndicator.type === 'natural' || selectedIndicator.type === 'discrete'
@@ -219,7 +114,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     setIsLoadingAcquisitionDates(true);
     setAcquisitionDatesError(undefined);
     try {
-      const acquisitions = await acquisitionDateProvider.list({
+      const acquisitions = await services.acquisitionDates.list({
         bounds: bounds
           ? {
               south: bounds.getSouth(),
@@ -252,7 +147,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     } finally {
       setIsLoadingAcquisitionDates(false);
     }
-  }, [center]);
+  }, [center, services.acquisitionDates]);
 
   const toggleDatePicker = () => {
     const nextVisible = !showDatePicker;
@@ -302,14 +197,13 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     setDrawMode(null);
   }, []);
 
-  const handleIndicatorSelect = async (indicator: Indicator) => {
+  const handleIndicatorSelect = async (indicator: IndicatorDefinition) => {
     setIsLoading(true);
     setSelectedIndicator(indicator);
     setIsDetailVisible(true);
     setPixelInfo(null);
 
-    // Simulate loading time
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, appConfig.indicatorLoadingDelayMs));
 
     if (indicator.type !== 'natural') {
       setSelectedLayer(indicator.layer || '');
@@ -327,11 +221,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
 
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`
-      );
-      const data = await response.json();
-      setSearchResults(data.slice(0, 5));
+      setSearchResults(await services.placeSearch.search(query));
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -339,9 +229,9 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     setIsSearching(false);
   };
 
-  const handleLocationSelect = (result: SearchResult) => {
+  const handleLocationSelect = (result: PlaceSearchResult) => {
     if (mapRef.current) {
-      mapRef.current.setView([parseFloat(result.lat), parseFloat(result.lon)], 12);
+      mapRef.current.setView([result.latitude, result.longitude], 12);
     }
     setShowSearch(false);
     setSearchQuery('');
@@ -380,9 +270,14 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
             to: new Date(`${selectedAcquisitionDate}T23:59:59.999Z`),
           }
         : undefined;
-      const result = await featureInfoProvider.get({
+      const viewport = mapRef.current
+        ? createFeatureInfoViewport(mapRef.current, e)
+        : undefined;
+
+      const result = await services.featureInfo.get({
         layer: selectedLayer,
         point: { lat: e.latlng.lat, lng: e.latlng.lng },
+        ...(viewport ? { viewport } : {}),
         maxCloudCoverage: 10,
         ...(timeRange ? { timeRange } : {}),
       });
@@ -414,7 +309,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedAcquisitionDate, selectedIndicator, selectedLayer]);
+  }, [selectedAcquisitionDate, selectedIndicator, selectedLayer, services.featureInfo]);
 
   // Add this effect to handle map click events
   React.useEffect(() => {
@@ -572,13 +467,13 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
 
                 {!isSearching && searchResults.length > 0 && (
                   <div className="space-y-2">
-                    {searchResults.map((result, index) => (
+                    {searchResults.map((result) => (
                       <button
-                        key={index}
+                        key={result.id}
                         onClick={() => handleLocationSelect(result)}
                         className="w-full text-left px-3 py-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors text-sm truncate"
                       >
-                        {result.display_name}
+                        {result.name}
                       </button>
                     ))}
                   </div>
@@ -610,13 +505,13 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
         ref={mapRef}
       >
         <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          url={appConfig.basemapTileUrl}
           attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         />
         {selectedLayer && selectedIndicator?.type !== 'natural' && (
           <WMSTileLayer
             key={`${selectedLayer}-${selectedAcquisitionDate ?? 'latest'}`}
-            url={WMS_URL}
+            url={appConfig.copernicusWmsUrl}
             layers={selectedLayer}
             format="image/png"
             transparent={true}
@@ -677,7 +572,7 @@ export function Map({ center = [20.2700, -103.2000], zoom = 12 }: MapProps) {
           <h2>Indicators</h2>
         </div>
         <div className="orber-indicator-list">
-          {indicators.map((indicator) => {
+          {INDICATORS.map((indicator) => {
             const Icon = indicator.icon;
             return (
               <button

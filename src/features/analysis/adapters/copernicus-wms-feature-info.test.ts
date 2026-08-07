@@ -78,6 +78,74 @@ describe('CopernicusWmsFeatureInfoProvider', () => {
     );
   });
 
+  it('should query the exact visible WMS pixel when viewport coordinates are available', async () => {
+    // ARRANGE
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({ type: 'FeatureCollection', features: [] }),
+    );
+    const provider = new CopernicusWmsFeatureInfoProvider(WMS_URL, fetcher as typeof fetch);
+
+    // ACT
+    await provider.get({
+      layer: 'CHLA',
+      point: { lat: 51.505, lng: -0.09 },
+      viewport: {
+        crs: 'EPSG:4326',
+        bounds: { south: 51.45, west: -0.2, north: 51.56, east: 0.03 },
+        width: 1280,
+        height: 720,
+        pixel: { x: 614.4, y: 382.8 },
+      },
+    });
+
+    // ASSERT
+    const requestUrl = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(Object.fromEntries(requestUrl.searchParams)).toMatchObject({
+      BBOX: '51.45,-0.2,51.56,0.03',
+      WIDTH: '1280',
+      HEIGHT: '720',
+      I: '614',
+      J: '383',
+    });
+  });
+
+  it('should preserve Web Mercator coordinates used by the visible WMS tiles', async () => {
+    // ARRANGE
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({ type: 'FeatureCollection', features: [] }),
+    );
+    const provider = new CopernicusWmsFeatureInfoProvider(WMS_URL, fetcher as typeof fetch);
+
+    // ACT
+    await provider.get({
+      layer: 'CHLA',
+      point: { lat: 51.505, lng: -0.09 },
+      viewport: {
+        crs: 'EPSG:3857',
+        bounds: {
+          south: 6706890.609854504,
+          west: -14675.909430753843,
+          north: 6716674.54947501,
+          east: -4891.96981025128,
+        },
+        width: 512,
+        height: 512,
+        pixel: { x: 469, y: 281 },
+      },
+    });
+
+    // ASSERT
+    const requestUrl = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(Object.fromEntries(requestUrl.searchParams)).toMatchObject({
+      CRS: 'EPSG:3857',
+      BBOX: '-14675.909430753843,6706890.609854504,-4891.96981025128,6716674.54947501',
+      WIDTH: '512',
+      HEIGHT: '512',
+      I: '469',
+      J: '281',
+    });
+  });
+
   it('should return a real scalar value and acquisition metadata', async () => {
     // ARRANGE
     const fetcher = vi.fn().mockResolvedValue(
@@ -177,6 +245,40 @@ describe('CopernicusWmsFeatureInfoProvider', () => {
       isOutOfArea: true,
       outputValues: [8, 8, 8],
     });
+  });
+
+  it('should not label an uncalibrated colored WMS pixel as outside the area', async () => {
+    // ARRANGE
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {
+              out1: '0.085889',
+              out2: '0.515674',
+              out3: '0.251921',
+            },
+          },
+        ],
+      }),
+    );
+    const provider = new CopernicusWmsFeatureInfoProvider(WMS_URL, fetcher as typeof fetch);
+
+    // ACT
+    const result = await provider.get({
+      layer: 'CHLA',
+      point: { lat: 51.5061, lng: -0.0513 },
+    });
+
+    // ASSERT
+    expect(result).toMatchObject({
+      value: null,
+      outputValues: [0.085889, 0.515674, 0.251921],
+      message: 'Rendered pixel color is not calibrated in the current measurement scale.',
+    });
+    expect(result.isOutOfArea).toBeUndefined();
   });
 
   it('should not fabricate a color estimate for a layer without a continuous scale', async () => {

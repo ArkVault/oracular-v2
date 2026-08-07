@@ -1,5 +1,9 @@
 # Orber — Architecture Review and Migration Plan
 
+> **Historical baseline (2026-08-01).** Slices B-D are now implemented and the
+> current dependency rules live in [`docs/architecture.md`](./architecture.md).
+> This document remains as the original audit and migration rationale.
+
 **Fecha:** 2026-08-01
 **Modo:** Audit + migración incremental
 **Fuente:** `docs/product-roadmap.md` y código actual

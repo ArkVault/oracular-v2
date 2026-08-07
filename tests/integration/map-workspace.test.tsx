@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mapHarness = vi.hoisted(() => {
   const harness = {
-    clickHandler: null as null | ((event: { latlng: { lat: number; lng: number } }) => Promise<void>),
+    clickHandler: null as null | ((event: {
+      latlng: { lat: number; lng: number };
+      containerPoint?: { x: number; y: number };
+    }) => Promise<void>),
     map: {} as Record<string, unknown>,
   };
 
@@ -21,7 +24,25 @@ const mapHarness = vi.hoisted(() => {
       getWest: () => -103.35,
       getNorth: () => 20.4,
       getEast: () => -103.05,
+      getSouthWest: () => ({ lat: 20.15, lng: -103.35 }),
+      getNorthEast: () => ({ lat: 20.4, lng: -103.05 }),
     })),
+    getSize: vi.fn(() => ({ x: 1280, y: 720 })),
+    getZoom: vi.fn(() => 12),
+    project: vi.fn(() => ({ x: 981, y: 537 })),
+    unproject: vi.fn(([x, y]: [number, number]) => ({
+      lat: y === 512 ? 6 : 1,
+      lng: x === 768 ? -14 : -5,
+    })),
+    options: {
+      crs: {
+        code: 'EPSG:3857',
+        project: ({ lat, lng }: { lat: number; lng: number }) => ({
+          x: lng * 1_000,
+          y: lat * 1_000,
+        }),
+      },
+    },
   };
 
   return harness;
@@ -252,6 +273,48 @@ describe('Map workspace integration', () => {
     expect(within(pointDetails).getByText(/not a direct sensor measurement/i)).toBeVisible();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', layer);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`QUERY_LAYERS=${layer}`);
+  });
+
+  it('should keep a brightness-shifted scale pixel inside the area of interest', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { out1: '140.7', out2: '134.4', out3: '108.5' },
+        }],
+      }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<Map />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    // ACT
+    await act(async () => {
+      await mapHarness.clickHandler?.({
+        latlng: { lat: 51.5096, lng: -0.1099 },
+        containerPoint: { x: 614.4, y: 382.8 },
+      });
+    });
+
+    // ASSERT
+    const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
+    expect(within(pointDetails).getByText('2.50 mg/m³')).toBeVisible();
+    expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(Object.fromEntries(requestUrl.searchParams)).toMatchObject({
+      CRS: 'EPSG:3857',
+      BBOX: '-14000,1000,-5000,6000',
+      WIDTH: '256',
+      HEIGHT: '256',
+      I: '213',
+      J: '25',
+    });
   });
 
   it('should show an out-of-area result when a clicked pixel is outside the scale', async () => {

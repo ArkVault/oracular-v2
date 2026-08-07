@@ -1,24 +1,9 @@
 import { isCloudCoverageEligible } from '../domain/cloud-coverage';
-
-export interface AcquisitionSearchBounds {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}
-
-export interface AcquisitionDateQuery {
-  bounds: AcquisitionSearchBounds;
-  from: Date;
-  to: Date;
-  maxCloudCoverage: number;
-}
-
-export interface CopernicusAcquisitionDate {
-  date: string;
-  cloudCoverage: number;
-  acquisitionId: string;
-}
+import type {
+  AcquisitionDate,
+  AcquisitionDateProvider,
+  AcquisitionDateQuery,
+} from '../ports/acquisition-date-provider';
 
 interface WfsFeatureCollection {
   features?: Array<{
@@ -44,7 +29,7 @@ function isValidIsoDate(value: unknown): value is string {
   );
 }
 
-export class CopernicusWfsAcquisitionDateProvider {
+export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProvider {
   private readonly fetcher: typeof fetch;
 
   constructor(
@@ -54,7 +39,7 @@ export class CopernicusWfsAcquisitionDateProvider {
     this.fetcher = fetcher ?? ((input, init) => globalThis.fetch(input, init));
   }
 
-  async list(query: AcquisitionDateQuery, signal?: AbortSignal): Promise<CopernicusAcquisitionDate[]> {
+  async list(query: AcquisitionDateQuery, signal?: AbortSignal): Promise<AcquisitionDate[]> {
     const url = new URL(this.wmsUrl.replace('/ogc/wms/', '/ogc/wfs/'));
     url.search = new URLSearchParams({
       SERVICE: 'WFS',
@@ -81,7 +66,7 @@ export class CopernicusWfsAcquisitionDateProvider {
     }
 
     const payload = await response.json() as WfsFeatureCollection;
-    const datesByDay = new Map<string, CopernicusAcquisitionDate>();
+    const datesByDay = new Map<string, AcquisitionDate>();
 
     for (const feature of payload.features ?? []) {
       const properties = feature.properties;

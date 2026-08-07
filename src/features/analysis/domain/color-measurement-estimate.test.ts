@@ -50,6 +50,31 @@ describe('color-derived measurement estimate', () => {
     expect(estimate).toBeCloseTo(2.5, 4);
   });
 
+  it('should preserve the measurement when a valid scale color is rendered darker', () => {
+    // ARRANGE
+    const renderedChannels = [140.7, 134.4, 108.5];
+
+    // ACT
+    const estimate = estimateMeasurementFromRenderedColor('CHLA', renderedChannels);
+
+    // ASSERT
+    expect(estimate).toBeCloseTo(2.5, 1);
+  });
+
+  it('should recover a suspended-solids value from a brightness-shifted ramp nuance', () => {
+    // ARRANGE
+    const renderedChannels = [106.8, 60.6, 46.2];
+
+    // ACT
+    const estimate = estimateMeasurementFromRenderedColor(
+      'TOTAL-SUSPENDED-SOLIDS',
+      renderedChannels,
+    );
+
+    // ASSERT
+    expect(estimate).toBeCloseTo(70, 1);
+  });
+
   it('should reject a dark rendered pixel outside the configured color scale', () => {
     // ARRANGE
     const renderedChannels = [8, 8, 8];
@@ -59,6 +84,17 @@ describe('color-derived measurement estimate', () => {
 
     // ASSERT
     expect(estimate).toBeNull();
+  });
+
+  it('should decline an uncalibrated saturated map color without calling it no-data', () => {
+    // ARRANGE
+    const renderedChannels = [20, 60, 200];
+
+    // ACT
+    const estimate = estimateMeasurementFromRenderedColor('CHLA', renderedChannels);
+
+    // ASSERT
+    expect(estimate).toBeUndefined();
   });
 
   it('should use the configured scales for suspended solids and turbidity', () => {
