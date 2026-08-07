@@ -1,210 +1,172 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet-draw';
-import { MAP_CONFIG, TILE_LAYERS } from '../../constants/mapConfig';
-import { EnvironmentalParameter, PixelData } from '../../types';
-import { DataInfoPanel } from './DataInfoPanel';
+import * as React from 'react';
+import type L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'react-day-picker/dist/style.css';
+
+import { appConfig } from '@/app/config';
+import { appServices, type AppServices } from '@/app/services';
+import { ParameterLoader } from '@/components/UI/ParameterLoader';
+import type { PlaceSearchResult } from '@/features/place-search/domain/place';
+
+import { AnalysisDetailsPanel } from './AnalysisDetailsPanel';
+import { useAcquisitionDates } from './hooks/use-acquisition-dates';
+import { usePlaceSearch } from './hooks/use-place-search';
+import { usePointAnalysis } from './hooks/use-point-analysis';
+import { IndicatorPanel } from './IndicatorPanel';
+import { INDICATORS, type IndicatorDefinition } from './indicator-definitions';
+import { MapCanvas } from './MapCanvas';
 import { MapControls } from './MapControls';
-import { DrawingControls } from './DrawingControls';
-import { PixelValueDisplay } from './PixelValueDisplay';
+import { MapHeader } from './MapHeader';
+import type { DrawMode } from './map-types';
 
-// Fix Leaflet default markers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+import '../UI/parameter-loader.css';
+import './loader.css';
+import './map-ui.css';
 
-interface MapProps {
-  selectedParameter: EnvironmentalParameter;
-  onPixelClick: (lat: number, lng: number) => void;
-  pixelData: PixelData | null;
-  onLocationSelect: (lat: number, lng: number) => void;
-  onMapClick?: () => void;
-  showParameterInfo: boolean;
-  onCloseParameterInfo: () => void;
-  pixelClickData: {lat: number, lng: number} | null;
-  onClosePixelDisplay: () => void;
+export interface MapProps {
+  center?: [number, number];
+  zoom?: number;
+  services?: AppServices;
 }
 
-// Component to handle map events
-const MapEventHandler: React.FC<{ 
-  onPixelClick: (lat: number, lng: number) => void;
-  onMapClick?: () => void;
-  selectedParameter: EnvironmentalParameter;
-}> = ({ onPixelClick, onMapClick, selectedParameter }) => {
-  useMapEvents({
-    click: (e) => {
-      const { lat, lng } = e.latlng;
-      
-      // Only trigger pixel click for non-natural-color parameters
-      if (selectedParameter.id !== 'natural-color') {
-        onPixelClick(lat, lng);
-      }
-      
-      onMapClick?.();
-    },
+export function Map({
+  center = [20.27, -103.2],
+  zoom = 12,
+  services = appServices,
+}: MapProps) {
+  const mapRef = React.useRef<L.Map | null>(null);
+  const [isIndicatorPanelVisible, setIsIndicatorPanelVisible] = React.useState(true);
+  const [isDetailVisible, setIsDetailVisible] = React.useState(true);
+  const [selectedIndicator, setSelectedIndicator] = React.useState<IndicatorDefinition>(
+    INDICATORS[0],
+  );
+  const [selectedLayer, setSelectedLayer] = React.useState('');
+  const [isIndicatorLoading, setIsIndicatorLoading] = React.useState(false);
+  const [drawMode, setDrawMode] = React.useState<DrawMode>(null);
+  const [drawingToolsActivated, setDrawingToolsActivated] = React.useState(false);
+  const [clearDrawingsSignal, setClearDrawingsSignal] = React.useState(0);
+
+  const acquisitions = useAcquisitionDates({
+    center,
+    mapRef,
+    provider: services.acquisitionDates,
   });
-  return null;
-};
+  const placeSearch = usePlaceSearch(services.placeSearch);
+  const pointAnalysis = usePointAnalysis({
+    mapRef,
+    provider: services.featureInfo,
+    selectedAcquisitionDate: acquisitions.selectedDate,
+    selectedIndicator,
+    selectedLayer,
+  });
 
-// Component to handle WMS layer - restored to original working version
-const WMSLayer: React.FC<{ parameter: EnvironmentalParameter }> = ({ parameter }) => {
-  const map = useMap();
-  const layerRef = useRef<L.TileLayer | null>(null);
+  const handleIndicatorSelect = async (indicator: IndicatorDefinition) => {
+    setIsIndicatorLoading(true);
+    setSelectedIndicator(indicator);
+    setIsDetailVisible(true);
+    pointAnalysis.clear();
 
-  useEffect(() => {
-    // Remove existing layer
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-      layerRef.current = null;
-    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, appConfig.indicatorLoadingDelayMs),
+    );
 
-    // Only add WMS layer for non-natural-color parameters
-    if (parameter.id !== 'natural-color') {
-      console.log(`Loading WMS layer: ${parameter.wmsLayer} for parameter: ${parameter.name}`);
-      
-      // Create WMS layer using the original working configuration
-      const wmsLayer = L.tileLayer.wms(parameter.wmsUrl, {
-        layers: parameter.wmsLayer,
-        format: 'image/png',
-        transparent: true,
-        version: '1.3.0',
-        attribution: 'Copernicus Sentinel data',
-        opacity: 0.8,
-        crs: L.CRS.EPSG4326,
-        // Use minimal cloud coverage for clearest imagery
-        maxcc: 10,
-      });
-
-      // Add error and success handling
-      wmsLayer.on('tileerror', (error) => {
-        console.warn(`WMS tile error for ${parameter.name}:`, error);
-      });
-
-      wmsLayer.on('tileload', () => {
-        console.log(`WMS tile loaded successfully for ${parameter.name}`);
-      });
-
-      layerRef.current = wmsLayer;
-      wmsLayer.addTo(map);
-      
-      // Ensure WMS layer is above base layer but below UI elements
-      wmsLayer.setZIndex(10);
-    }
-
-    return () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-        layerRef.current = null;
-      }
-    };
-  }, [map, parameter.id, parameter.name, parameter.wmsLayer, parameter.wmsUrl]);
-
-  return null;
-};
-
-// Map reference handler component
-const MapRefHandler: React.FC<{ onMapReady: (map: L.Map) => void }> = ({ onMapReady }) => {
-  const map = useMap();
-  
-  useEffect(() => {
-    onMapReady(map);
-  }, [map, onMapReady]);
-  
-  return null;
-};
-
-export const Map = forwardRef<any, MapProps>(({
-  selectedParameter,
-  onPixelClick,
-  pixelData,
-  onLocationSelect,
-  onMapClick,
-  showParameterInfo,
-  onCloseParameterInfo,
-  pixelClickData,
-  onClosePixelDisplay,
-}, ref) => {
-  const [baseLayer, setBaseLayer] = useState<'cartoDB' | 'satellite' | 'openStreetMap'>('satellite');
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-
-  useImperativeHandle(ref, () => ({
-    setView: (center: [number, number], zoom: number) => {
-      if (mapInstance) {
-        mapInstance.setView(center, zoom);
-      }
-    },
-    getMap: () => mapInstance,
-  }));
-
-  const handleLocationSelect = (lat: number, lng: number) => {
-    onLocationSelect(lat, lng);
+    setSelectedLayer(indicator.type === 'natural' ? '' : indicator.layer || '');
+    setIsIndicatorLoading(false);
   };
 
-  const handleMapReady = (map: L.Map) => {
-    setMapInstance(map);
-    
-    // Ensure proper z-index layering
-    const mapContainer = map.getContainer();
-    if (mapContainer) {
-      mapContainer.style.zIndex = '1';
-    }
+  const handleLocationSelect = (result: PlaceSearchResult) => {
+    mapRef.current?.setView([result.latitude, result.longitude], 12);
+    placeSearch.clear();
+  };
+
+  const handleSaveKml = React.useCallback((kml: string) => {
+    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'area-selection.kml';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  }, []);
+
+  const toggleDrawMode = (mode: Exclude<DrawMode, null>) => {
+    setDrawingToolsActivated(true);
+    setDrawMode((current) => (current === mode ? null : mode));
+  };
+
+  const clearDrawings = () => {
+    setDrawingToolsActivated(true);
+    setClearDrawingsSignal((signal) => signal + 1);
   };
 
   return (
-    <div className="relative flex-1 h-full z-map">
-      <MapContainer
-        center={MAP_CONFIG.center}
-        zoom={MAP_CONFIG.zoom}
-        className="h-full w-full z-map"
-        zoomControl={false}
-        crs={L.CRS.EPSG3857}
-        style={{ zIndex: 1 }}
-      >
-        <TileLayer
-          url={TILE_LAYERS[baseLayer].url}
-          attribution={TILE_LAYERS[baseLayer].attribution}
-          maxZoom={18}
-          zIndex={1}
-        />
-        
-        <WMSLayer parameter={selectedParameter} />
-        <MapEventHandler 
-          onPixelClick={onPixelClick} 
-          onMapClick={onMapClick} 
-          selectedParameter={selectedParameter}
-        />
-        <DrawingControls />
-        <MapRefHandler onMapReady={handleMapReady} />
-        
-        <MapControls
-          baseLayer={baseLayer}
-          onBaseLayerChange={setBaseLayer}
-          parameter={selectedParameter}
-          onLocationSelect={handleLocationSelect}
-        />
-      </MapContainer>
+    <div className={`map-shell ${pointAnalysis.pointInfo ? 'has-analysis-result' : ''}`}>
+      <MapHeader
+        acquisitions={{
+          availableCalendarDates: acquisitions.availableCalendarDates,
+          availableDateSet: acquisitions.availableDateSet,
+          availableDates: acquisitions.availableDates,
+          calendarMonth: acquisitions.calendarMonth,
+          error: acquisitions.error,
+          isLoading: acquisitions.isLoading,
+          onLoad: acquisitions.load,
+          onMonthChange: acquisitions.setCalendarMonth,
+          onSelectDate: acquisitions.setSelectedDate,
+          selectedCalendarDate: acquisitions.selectedCalendarDate,
+        }}
+        placeSearch={{
+          isSearching: placeSearch.isSearching,
+          onClear: placeSearch.clear,
+          onSearch: placeSearch.search,
+          onSelect: handleLocationSelect,
+          query: placeSearch.query,
+          results: placeSearch.results,
+        }}
+      />
 
-      {showParameterInfo && (
-        <DataInfoPanel
-          parameter={selectedParameter}
-          onClose={onCloseParameterInfo}
+      <MapCanvas
+        center={center}
+        clearDrawingsSignal={clearDrawingsSignal}
+        drawMode={drawMode}
+        drawingToolsActivated={drawingToolsActivated}
+        mapRef={mapRef}
+        onDrawingComplete={() => setDrawMode(null)}
+        onSaveKml={handleSaveKml}
+        selectedAcquisitionDate={acquisitions.selectedDate}
+        selectedIndicator={selectedIndicator}
+        selectedLayer={selectedLayer}
+        selectedTileTime={acquisitions.selectedTileTime}
+        zoom={zoom}
+      />
+
+      <MapControls
+        drawMode={drawMode}
+        onClearDrawings={clearDrawings}
+        onResetView={() => mapRef.current?.setView(center, zoom)}
+        onToggleDrawMode={toggleDrawMode}
+        onZoomIn={() => mapRef.current?.zoomIn()}
+        onZoomOut={() => mapRef.current?.zoomOut()}
+      />
+
+      <IndicatorPanel
+        isVisible={isIndicatorPanelVisible}
+        onSelect={handleIndicatorSelect}
+        onToggle={() => setIsIndicatorPanelVisible((visible) => !visible)}
+        selectedIndicator={selectedIndicator}
+      />
+
+      {isDetailVisible && (
+        <AnalysisDetailsPanel
+          indicator={selectedIndicator}
+          onClearPoint={pointAnalysis.clear}
+          onClose={() => setIsDetailVisible(false)}
+          pointInfo={pointAnalysis.pointInfo}
         />
       )}
 
-      {pixelClickData && selectedParameter.id !== 'natural-color' && (
-        <PixelValueDisplay
-          lat={pixelClickData.lat}
-          lng={pixelClickData.lng}
-          parameter={selectedParameter}
-          onClose={onClosePixelDisplay}
-        />
-      )}
+      <ParameterLoader isVisible={isIndicatorLoading || pointAnalysis.isLoading} />
     </div>
   );
-});
-
-Map.displayName = 'Map';
+}

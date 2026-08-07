@@ -1,21 +1,24 @@
-import React from 'react';
-
 interface ParameterLoaderProps {
   isVisible: boolean;
 }
 
-export const ParameterLoader: React.FC<ParameterLoaderProps> = ({ isVisible }) => {
+export function ParameterLoader({ isVisible }: ParameterLoaderProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-loader flex items-center justify-center pointer-events-auto">
-      <div className="warp-loader">
-        <div className="ring"></div>
-        <div className="ring"></div>
-        <div className="ring"></div>
-        <div className="ring"></div>
-        <div className="core-glow"></div>
+    <div
+      className="parameter-loader-overlay"
+      role="status"
+      aria-label="Analyzing satellite data"
+      aria-live="polite"
+    >
+      <div className="loader" aria-hidden="true">
+        <div className="intern" />
+        <div className="external-shadow">
+          <div className="central" />
+        </div>
       </div>
+      <span className="sr-only">Analyzing satellite data</span>
     </div>
   );
-};
+}

@@ -1,0 +1,43 @@
+.leaflet-draw.leaflet-control {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  margin: 0;
+}
+
+/* Position the drawing actions toolbar */
+.leaflet-draw-actions {
+  position: absolute;
+  left: auto !important;
+  right: 40px !important;
+  bottom: 0 !important;
+  top: auto !important;
+  margin: 0;
+}
+
+/* Style the action buttons container */
+.leaflet-draw-actions li {
+  margin-bottom: 2px;
+  float: right !important;
+}
+
+/* Ensure the buttons are visible */
+.leaflet-draw-actions a {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+}
+
+/* Adjust the position of the zoom controls to not overlap with draw controls */
+.leaflet-control-zoom.leaflet-bar.leaflet-control {
+  margin-bottom: 100px;
+}
+
+/* Optional: Make the drawing controls background match your theme */
+.leaflet-draw-toolbar a {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: black;
+}
+
+.leaflet-draw-toolbar a:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}

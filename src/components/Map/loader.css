@@ -1,0 +1,68 @@
+.loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  cursor: not-allowed;
+  scale: 0.7;
+}
+
+.central {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 10em;
+  height: 10em;
+  border-radius: 50%;
+  box-shadow: 0.5em 1em 1em blueviolet,
+    -0.5em 0.5em 1em blue,
+    0.5em -0.5em 1em purple,
+    -0.5em -0.5em 1em cyan;
+}
+
+.external-shadow {
+  width: 10em;
+  height: 10em;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-shadow: 0.5em 0.5em 3em blueviolet,
+    -0.5em 0.5em 3em blue,
+    0.5em -0.5em 3em purple,
+    -0.5em -0.5em 3em cyan;
+  z-index: 999;
+  animation: rotate 3s linear infinite;
+  background-color: #212121;
+}
+
+.intern {
+  position: absolute;
+  color: white;
+  z-index: 9999;
+}
+
+.intern::before {
+  content: "Analyzing";
+  animation: percent 2s ease-in-out infinite;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes percent {
+  0%, 25%, 33%, 42%, 51%, 67%, 74%, 75%, 86%, 95%, 98%, 99% {
+    content: 'Analyzing';
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .external-shadow {
+    animation: none;
+  }
+}
