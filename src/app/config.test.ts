@@ -33,4 +33,29 @@ describe('createPublicAppConfig', () => {
       'VITE_COPERNICUS_WMS_URL must be an HTTP(S) URL',
     );
   });
+
+  it('should reject insecure remote provider URLs', () => {
+    // ARRANGE
+    const environment = {
+      VITE_NOMINATIM_URL: 'http://search.example.test/search',
+    };
+
+    // ACT + ASSERT
+    expect(() => createPublicAppConfig(environment)).toThrow(
+      'VITE_NOMINATIM_URL must use HTTPS outside localhost',
+    );
+  });
+
+  it('should allow HTTP provider URLs only for local development', () => {
+    // ARRANGE
+    const environment = {
+      VITE_NOMINATIM_URL: 'http://127.0.0.1:8787/search',
+    };
+
+    // ACT
+    const config = createPublicAppConfig(environment);
+
+    // ASSERT
+    expect(config.placeSearchUrl).toBe(environment.VITE_NOMINATIM_URL);
+  });
 });

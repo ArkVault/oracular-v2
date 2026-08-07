@@ -132,6 +132,9 @@ browser bundle and must never contain secrets.
 | `VITE_NOMINATIM_URL` | Place-search endpoint |
 | `VITE_BASEMAP_TILE_URL` | Leaflet basemap tile template |
 
+Custom provider domains must also be added explicitly to the Content Security
+Policy in `vercel.json` before deployment.
+
 The remaining variables in `.env.example` belong to legacy local tooling and
 are not required by the browser application.
 
@@ -144,15 +147,14 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The latest verified local checkpoint contains 13 test suites
-and 53 tests. Coverage for the configured critical modules is 97.27 percent
-statements, 91.57 percent branches, 97.77 percent functions and 98.05 percent
+production build. The latest verified local checkpoint contains 14 test suites
+and 61 tests. Coverage for the configured critical modules is 97.32 percent
+statements, 92.02 percent branches, 97.77 percent functions and 98.09 percent
 lines.
 
 Coverage thresholds currently apply to the configured domain and provider
 modules, not to the entire frontend. The localhost smoke test runs separately
-and requires a running application. Browser E2E coverage and automated CI gates
-are still pending.
+and requires a running application. Browser E2E coverage is still pending.
 
 Individual commands:
 
@@ -172,18 +174,13 @@ Detailed strategy and results are available in
 
 ## Deployment
 
-The repository includes Vercel configuration and the Vercel CLI as a development
-dependency.
+The repository includes hardened Vercel configuration but intentionally excludes
+the Vercel CLI from the dependency tree. Deploy through Vercel's Git integration:
 
-```bash
-npm run deploy
-```
-
-For a production deployment:
-
-```bash
-npm run deploy:prod
-```
+1. Connect `ArkVault/oracular-v2` to a Vercel project.
+2. Configure `main` as the production branch.
+3. Use `development` and pull requests for Preview deployments.
+4. Store private values only in Vercel's server-side environment configuration.
 
 Preview validation and production readiness are separate release gates. A
 successful local build does not by itself establish that OAuth, provider
@@ -199,8 +196,8 @@ configuration or public deployment behavior is production-ready.
 - Drawing is available, but the current KML export remains a placeholder and is
   not suitable for operational use.
 - Automated end-to-end coverage against live map providers is still pending.
-- Provider cancellation, common timeouts and production observability require
-  further hardening.
+- Production observability and server-side provider rate limiting require further
+  hardening.
 
 ## Roadmap
 
@@ -223,6 +220,10 @@ The detailed sequence and acceptance criteria are maintained in the
 - Never place secrets in `VITE_` variables; Vite exposes them to the client.
 - Keep OAuth exchanges and privileged provider calls in managed server-side
   infrastructure.
+- Keep only public provider endpoints in browser configuration and require HTTPS
+  outside localhost.
+- Run the pinned CI, CodeQL, secret scan and production dependency audit before
+  merging to protected branches.
 - Review `.gitignore` and the staged diff before every publication.
 
 ## Contributing

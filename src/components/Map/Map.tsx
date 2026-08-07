@@ -85,6 +85,8 @@ export function Map({
   const [searchResults, setSearchResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const mapRef = React.useRef<L.Map | null>(null);
+  const searchDelayRef = React.useRef<number>();
+  const searchAbortRef = React.useRef<AbortController>();
   const [pixelInfo, setPixelInfo] = React.useState<PointInfoData | null>(null);
   const availableAcquisitionDateSet = React.useMemo(
     () => new Set(availableAcquisitionDates),
@@ -213,23 +215,49 @@ export function Map({
     setIsLoading(false);
   };
 
-  const handleSearch = async (query: string) => {
-    if (query.length < 3) {
+  const cancelPendingSearch = React.useCallback(() => {
+    if (searchDelayRef.current !== undefined) {
+      window.clearTimeout(searchDelayRef.current);
+      searchDelayRef.current = undefined;
+    }
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = undefined;
+  }, []);
+
+  const handleSearch = React.useCallback((query: string) => {
+    cancelPendingSearch();
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length < 3 || normalizedQuery.length > 200) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
-    try {
-      setSearchResults(await services.placeSearch.search(query));
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchResults([]);
-    }
-    setIsSearching(false);
-  };
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    searchDelayRef.current = window.setTimeout(async () => {
+      searchDelayRef.current = undefined;
+      try {
+        const results = await services.placeSearch.search(normalizedQuery, controller.signal);
+        if (!controller.signal.aborted) {
+          setSearchResults(results);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    }, 300);
+  }, [cancelPendingSearch, services.placeSearch]);
 
   const handleLocationSelect = (result: PlaceSearchResult) => {
+    cancelPendingSearch();
     if (mapRef.current) {
       mapRef.current.setView([result.latitude, result.longitude], 12);
     }
@@ -244,6 +272,8 @@ export function Map({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  React.useEffect(() => cancelPendingSearch, [cancelPendingSearch]);
 
   // Add click handler function
   const handleMapClick = React.useCallback(async (e: L.LeafletMouseEvent) => {
@@ -434,6 +464,7 @@ export function Map({
                   <Search className="w-4 h-4 text-gray-400" />
                   <input
                     type="text"
+                    maxLength={200}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -449,7 +480,7 @@ export function Map({
                       size="icon"
                       onClick={() => {
                         setSearchQuery('');
-                        setSearchResults([]);
+                        handleSearch('');
                       }}
                       className="orber-search-clear"
                       aria-label="Clear search"

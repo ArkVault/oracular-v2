@@ -122,3 +122,27 @@ para que `GetFeatureInfo` exponga el escalar directamente.
 
 **Roadmap sync:** alineación del clic y clasificación no-data completadas;
 calibración científica de las rampas permanece parcial.
+
+## Checkpoint — Endurecimiento de seguridad
+
+**Fecha:** 2026-08-06
+**Test status:** ✅ TESTED localmente
+
+- Configuración pública restringida a HTTPS fuera de localhost.
+- Búsquedas limitadas a 200 caracteres, con debounce, cancelación y validación
+  de coordenadas geográficas.
+- Los adaptadores externos omiten credenciales y referrer, y aplican timeout
+  común de 10 segundos.
+- Vercel aplica CSP, HSTS y las cabeceras defensivas existentes.
+- CI y CodeQL usan actions fijadas por commit; Gitleaks revisa secretos y
+  Dependabot dirige actualizaciones agrupadas a `development`.
+- La CLI de Vercel fue retirada del árbol local; el despliegue se delega a la
+  integración Git administrada.
+- Regresión completa: 14 suites y 61 tests pasan.
+- Cobertura crítica: 97.32% statements, 92.02% branches, 97.77% functions y
+  98.09% lines.
+- `npm audit`: 0 vulnerabilidades en dependencias de producción y desarrollo.
+
+**Roadmap sync:** hardening local y gates automatizados completados; faltan la
+verificación de los workflows remotos, protección de ramas y observabilidad de
+producción.

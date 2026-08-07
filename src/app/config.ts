@@ -24,6 +24,11 @@ function readHttpUrl(name: string, value: string): string {
     throw new Error(`${name} must be an HTTP(S) URL`);
   }
 
+  const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !isLocalhost) {
+    throw new Error(`${name} must use HTTPS outside localhost`);
+  }
+
   return value;
 }
 

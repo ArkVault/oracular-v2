@@ -1,5 +1,8 @@
 import type { PlaceSearchResult } from '../domain/place';
 import type { PlaceSearchProvider } from '../ports/place-search-provider';
+import { createExternalRequestInit } from '@/lib/external-request';
+
+const MAX_QUERY_LENGTH = 200;
 
 interface NominatimPlaceDto {
   place_id?: unknown;
@@ -15,7 +18,11 @@ function mapPlace(dto: NominatimPlaceDto): PlaceSearchResult | undefined {
     typeof dto.display_name !== 'string' ||
     dto.display_name.trim().length === 0 ||
     !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude)
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
   ) {
     return undefined;
   }
@@ -41,7 +48,7 @@ export class NominatimPlaceSearchProvider implements PlaceSearchProvider {
 
   async search(query: string, signal?: AbortSignal): Promise<PlaceSearchResult[]> {
     const normalizedQuery = query.trim();
-    if (normalizedQuery.length < 3) {
+    if (normalizedQuery.length < 3 || normalizedQuery.length > MAX_QUERY_LENGTH) {
       return [];
     }
 
@@ -52,7 +59,7 @@ export class NominatimPlaceSearchProvider implements PlaceSearchProvider {
       limit: String(this.limit),
     }).toString();
 
-    const response = await this.fetcher(url, { signal });
+    const response = await this.fetcher(url, createExternalRequestInit(signal));
     if (!response.ok) {
       throw new Error(`Place search failed (${response.status})`);
     }

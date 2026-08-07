@@ -4,6 +4,7 @@ import type {
   AcquisitionDateProvider,
   AcquisitionDateQuery,
 } from '../ports/acquisition-date-provider';
+import { createExternalRequestInit } from '@/lib/external-request';
 
 interface WfsFeatureCollection {
   features?: Array<{
@@ -60,7 +61,7 @@ export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProv
       MAXFEATURES: '500',
     }).toString();
 
-    const response = await this.fetcher(url, { signal });
+    const response = await this.fetcher(url, createExternalRequestInit(signal));
     if (!response.ok) {
       throw new Error(`Copernicus acquisition dates request failed (${response.status})`);
     }

@@ -39,7 +39,8 @@ Unit 70% | Integration 20% | E2E/Smoke 10%
 
 ## Flujos críticos pendientes
 
-1. `GetFeatureInfo` real y manejo de ausencia de datos.
+1. Calibración escalar validada para los valores obtenidos mediante
+   `GetFeatureInfo`.
 2. Login, restauración y cierre de sesión con Google.
 3. Calendario: 9.99% elegible; 10%, ausente o inválido no elegible.
 4. Adquisición seleccionada idéntica en mapa y análisis.

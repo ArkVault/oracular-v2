@@ -47,6 +47,42 @@ describe('NominatimPlaceSearchProvider', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it('should reject an oversized query before contacting the provider', async () => {
+    // ARRANGE
+    const fetcher = vi.fn();
+    const provider = new NominatimPlaceSearchProvider(
+      'https://search.example.test/search',
+      fetcher as typeof fetch,
+    );
+
+    // ACT
+    const results = await provider.search('a'.repeat(201));
+
+    // ASSERT
+    expect(results).toEqual([]);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('should discard coordinates outside geographic bounds', async () => {
+    // ARRANGE
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([
+        { place_id: 14, display_name: 'Invalid latitude', lat: '91', lon: '0' },
+        { place_id: 15, display_name: 'Invalid longitude', lat: '0', lon: '-181' },
+      ]), { status: 200 }),
+    );
+    const provider = new NominatimPlaceSearchProvider(
+      'https://search.example.test/search',
+      fetcher as typeof fetch,
+    );
+
+    // ACT
+    const results = await provider.search('invalid coordinates');
+
+    // ASSERT
+    expect(results).toEqual([]);
+  });
+
   it('should fail clearly when the provider response is unsuccessful', async () => {
     // ARRANGE
     const provider = new NominatimPlaceSearchProvider(

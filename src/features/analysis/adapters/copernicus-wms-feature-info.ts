@@ -5,6 +5,7 @@ import type {
 import { estimateMeasurementFromRenderedColor } from '../domain/color-measurement-estimate';
 import { getMeasurementScale } from '../domain/measurement-scale';
 import type { FeatureInfoProvider } from '../ports/feature-info-provider';
+import { createExternalRequestInit } from '@/lib/external-request';
 
 const POINT_QUERY_DELTA = 0.0001;
 
@@ -130,7 +131,7 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
 
     url.search = new URLSearchParams(params).toString();
 
-    const response = await this.fetcher(url, { signal });
+    const response = await this.fetcher(url, createExternalRequestInit(signal));
     if (!response.ok) {
       throw new Error(`Copernicus GetFeatureInfo failed with HTTP ${response.status}`);
     }

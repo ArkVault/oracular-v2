@@ -158,6 +158,36 @@ describe('Map workspace integration', () => {
     expect(screen.getByRole('dialog', { name: 'Available sensors' })).toBeVisible();
   });
 
+  it('should debounce place searches and send only the latest query', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    const placeSearch = vi.fn().mockResolvedValue([]);
+    const services = {
+      placeSearch: { search: placeSearch },
+      acquisitionDates: { list: vi.fn().mockResolvedValue([]) },
+      featureInfo: { get: vi.fn() },
+    };
+    render(<Map services={services} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    const input = screen.getByPlaceholderText('Search places...');
+
+    // ACT
+    fireEvent.change(input, { target: { value: 'Lond' } });
+    fireEvent.change(input, { target: { value: 'London' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(299);
+    });
+
+    // ASSERT
+    expect(placeSearch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(placeSearch).toHaveBeenCalledTimes(1);
+    expect(placeSearch).toHaveBeenCalledWith('London', expect.any(AbortSignal));
+  });
+
   it('should show only real cloud-safe Copernicus dates and apply the selected date to imagery', async () => {
     // ARRANGE
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
