@@ -1,0 +1,264 @@
+import * as React from 'react';
+import { Activity, Bell, Calendar, Search, UserRound, X } from 'lucide-react';
+import { DayPicker } from 'react-day-picker';
+
+import { Button } from '@/components/UI/button';
+import { Card } from '@/components/UI/card';
+import { localDateToAcquisitionDate } from '@/features/acquisitions/domain/acquisition-date';
+import type { PlaceSearchResult } from '@/features/place-search/domain/place';
+
+interface AcquisitionDateMenuProps {
+  availableCalendarDates: Date[];
+  availableDateSet: Set<string>;
+  availableDates: string[];
+  calendarMonth: Date;
+  error?: string;
+  isLoading: boolean;
+  onLoad: () => Promise<void>;
+  onMonthChange: (month: Date) => void;
+  onSelectDate: (date?: string) => void;
+  selectedCalendarDate?: Date;
+}
+
+interface PlaceSearchMenuProps {
+  isSearching: boolean;
+  onClear: () => void;
+  onSearch: (query: string) => void;
+  onSelect: (result: PlaceSearchResult) => void;
+  query: string;
+  results: PlaceSearchResult[];
+}
+
+interface MapHeaderProps {
+  acquisitions: AcquisitionDateMenuProps;
+  placeSearch: PlaceSearchMenuProps;
+}
+
+export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
+  const [showDatePicker, setShowDatePicker] = React.useState(false);
+  const [showSensorMenu, setShowSensorMenu] = React.useState(false);
+  const [showSearch, setShowSearch] = React.useState(false);
+
+  const toggleDatePicker = () => {
+    const nextVisible = !showDatePicker;
+    setShowDatePicker(nextVisible);
+    if (nextVisible) {
+      void acquisitions.onLoad();
+    }
+    setShowSensorMenu(false);
+    setShowSearch(false);
+  };
+
+  const toggleSensorMenu = () => {
+    setShowSensorMenu((visible) => !visible);
+    setShowDatePicker(false);
+    setShowSearch(false);
+  };
+
+  const toggleSearch = () => {
+    setShowSearch((visible) => !visible);
+    setShowDatePicker(false);
+    setShowSensorMenu(false);
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.date-picker-container') && !target.closest('.date-button')) {
+        setShowDatePicker(false);
+      }
+      if (!target.closest('.sensor-menu-container') && !target.closest('.sensor-button')) {
+        setShowSensorMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectPlace = (result: PlaceSearchResult) => {
+    placeSearch.onSelect(result);
+    setShowSearch(false);
+  };
+
+  return (
+    <nav className="orber-header" aria-label="Primary navigation">
+      <div className="orber-brand">
+        <div className="orber-brand__mark" aria-hidden="true">
+          <span />
+        </div>
+        <h1>Orber</h1>
+      </div>
+
+      <div className="orber-header__nav">
+        <Button
+          type="button"
+          variant="ghost"
+          className={`date-button orber-nav-button ${showDatePicker ? 'is-active' : ''}`}
+          onClick={toggleDatePicker}
+          aria-expanded={showDatePicker}
+        >
+          <Calendar /> <span>Dates</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className={`sensor-button orber-nav-button ${showSensorMenu ? 'is-active' : ''}`}
+          onClick={toggleSensorMenu}
+          aria-expanded={showSensorMenu}
+        >
+          <Activity /> <span>Sensors</span>
+        </Button>
+
+        {showDatePicker && (
+          <Card
+            className="date-picker-container orber-popover orber-popover--calendar"
+            role="dialog"
+            aria-label="Available acquisition dates"
+          >
+            <div className="orber-popover__eyebrow">Copernicus imagery</div>
+            <h2>Select acquisition date</h2>
+            <DayPicker
+              mode="single"
+              selected={acquisitions.selectedCalendarDate}
+              onSelect={(date) => {
+                acquisitions.onSelectDate(
+                  date ? localDateToAcquisitionDate(date) : undefined,
+                );
+              }}
+              month={acquisitions.calendarMonth}
+              onMonthChange={acquisitions.onMonthChange}
+              disabled={(date) =>
+                acquisitions.isLoading ||
+                !acquisitions.availableDateSet.has(localDateToAcquisitionDate(date))
+              }
+              modifiers={{ available: acquisitions.availableCalendarDates }}
+              modifiersClassNames={{ available: 'rdp-day_available' }}
+              numberOfMonths={1}
+              className="bg-transparent text-white"
+              showOutsideDays
+              fixedWeeks
+            />
+            <div className="orber-calendar-status" aria-live="polite">
+              {acquisitions.isLoading
+                ? 'Loading available Copernicus dates…'
+                : acquisitions.error
+                  ? acquisitions.error
+                  : acquisitions.availableDates.length === 0
+                    ? 'No cloud-safe acquisitions in the last 12 months.'
+                    : `${acquisitions.availableDates.length} cloud-safe acquisitions`}
+            </div>
+          </Card>
+        )}
+
+        {showSensorMenu && (
+          <Card
+            className="sensor-menu-container orber-popover orber-popover--sensors"
+            role="dialog"
+            aria-label="Available sensors"
+          >
+            <div className="orber-popover__eyebrow">Data sources</div>
+            <h2>Available sensors</h2>
+            <div className="orber-sensor-list">
+              <button className="is-selected">
+                <span className="orber-sensor-dot" />
+                <span><strong>Sentinel-2</strong><small>Active · multispectral</small></span>
+              </button>
+              <button disabled>
+                <span className="orber-sensor-dot" />
+                <span><strong>PlanetScope</strong><small>Coming soon</small></span>
+              </button>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      <div className="orber-header__actions">
+        <div className="orber-search-wrap">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleSearch}
+            className={`orber-icon-button ${showSearch ? 'is-active' : ''}`}
+            aria-label="Search"
+            aria-expanded={showSearch}
+          >
+            <Search />
+          </Button>
+
+          {showSearch && (
+            <Card className="orber-popover orber-search-popover">
+              <div className="orber-search-field">
+                <Search className="w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={placeSearch.query}
+                  onChange={(event) => placeSearch.onSearch(event.target.value)}
+                  placeholder="Search places..."
+                  className="orber-search-input"
+                />
+                {placeSearch.query && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={placeSearch.onClear}
+                    className="orber-search-clear"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
+              {placeSearch.isSearching && (
+                <div className="text-center text-gray-400 py-2">Searching...</div>
+              )}
+
+              {!placeSearch.isSearching && placeSearch.results.length > 0 && (
+                <div className="space-y-2">
+                  {placeSearch.results.map((result) => (
+                    <button
+                      key={result.id}
+                      onClick={() => selectPlace(result)}
+                      className="w-full text-left px-3 py-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors text-sm truncate"
+                    >
+                      {result.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!placeSearch.isSearching &&
+                placeSearch.query.length >= 3 &&
+                placeSearch.results.length === 0 && (
+                  <div className="text-center text-gray-400 py-2">No results found</div>
+                )}
+            </Card>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="orber-icon-button"
+          aria-label="Notifications"
+        >
+          <Bell />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="orber-user"
+          aria-label="Account"
+        >
+          <UserRound />
+        </Button>
+      </div>
+    </nav>
+  );
+}

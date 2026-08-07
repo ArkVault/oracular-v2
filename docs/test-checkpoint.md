@@ -146,3 +146,27 @@ calibración científica de las rampas permanece parcial.
 **Roadmap sync:** hardening local, workflows remotos y protección de ramas
 completados. Faltan E2E, observabilidad de producción y promover `development`
 a `main` mediante un release controlado.
+
+## Checkpoint — Responsabilidades del workspace de mapa
+
+**Fecha:** 2026-08-07
+**Test status:** ✅ TESTED
+
+- `Map.tsx` se redujo de 694 a 173 líneas y conserva únicamente composición,
+  selección de indicador, dibujo y coordinación del workspace.
+- Fechas de adquisición, búsqueda de lugares y análisis de punto se aislaron en
+  hooks orientados a cada feature.
+- Header, canvas Leaflet, controles, indicadores y detalle analítico se
+  separaron en componentes con responsabilidades explícitas.
+- La baseline y la regresión posterior mantienen 11 pruebas de integración del
+  workspace aprobadas.
+- Regresión completa: 14 suites y 61 tests pasan.
+- Cobertura crítica sin regresión: 97.32% statements, 92.02% branches, 97.77%
+  functions y 98.09% lines.
+- `npm run check`: lint, typecheck, cobertura y build pasan.
+- Verificación localhost: overlays mutuamente exclusivos, búsqueda, panel CHLA,
+  escala de medición y seis controles del mapa funcionan sin errores de consola.
+
+**Roadmap sync:** la violación principal de Single Responsibility del workspace
+queda corregida y verificada. El siguiente refactor debe centrarse en lazy
+loading y presupuesto de bundle, no en añadir capas abstractas adicionales.
