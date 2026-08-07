@@ -61,7 +61,7 @@ npm run test:smoke    → PASS
 
 **Fase 3 — Testing y gates de calidad:** en progreso.
 Baseline unitaria, integración, smoke, cobertura y gate local: ✅
-CI y E2E: pendientes.
+CI: ✅; E2E: pendiente.
 
 **Fase 4 — Responsive, accesibilidad y UX:** parcial. El shell visual de `orber-geospatial-insights` quedó adaptado a la lógica real, verificado manualmente en 375 y 1440 px sin overflow horizontal. Falta formalizar E2E responsive y revisar contenido/descripciones.
 
@@ -143,6 +143,6 @@ calibración científica de las rampas permanece parcial.
   98.09% lines.
 - `npm audit`: 0 vulnerabilidades en dependencias de producción y desarrollo.
 
-**Roadmap sync:** hardening local y gates automatizados completados; faltan la
-verificación de los workflows remotos, protección de ramas y observabilidad de
-producción.
+**Roadmap sync:** hardening local, workflows remotos y protección de ramas
+completados. Faltan E2E, observabilidad de producción y promover `development`
+a `main` mediante un release controlado.
