@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { DayPickerProps } from 'react-day-picker';
+import type { PropsBase, PropsSingle } from 'react-day-picker';
 
 const DayPicker = React.lazy(async () => {
   const module = await import('react-day-picker');
@@ -7,7 +7,7 @@ const DayPicker = React.lazy(async () => {
 });
 
 type AcquisitionCalendarProps = Omit<
-  Extract<DayPickerProps, { mode?: 'single' }>,
+  PropsBase & PropsSingle,
   'mode'
 >;
 
