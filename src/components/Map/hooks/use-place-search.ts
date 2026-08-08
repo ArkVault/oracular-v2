@@ -7,8 +7,8 @@ export function usePlaceSearch(provider: PlaceSearchProvider) {
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
-  const delayRef = React.useRef<number>();
-  const abortRef = React.useRef<AbortController>();
+  const delayRef = React.useRef<number | undefined>(undefined);
+  const abortRef = React.useRef<AbortController | undefined>(undefined);
 
   const cancel = React.useCallback(() => {
     if (delayRef.current !== undefined) {

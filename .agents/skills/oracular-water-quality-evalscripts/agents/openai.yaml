@@ -1,0 +1,4 @@
+interface:
+  display_name: "Oracular Water Quality Evalscripts"
+  short_description: "Validate scientific water-quality evalscripts"
+  default_prompt: "Use $oracular-water-quality-evalscripts to improve and validate a Sentinel-2 water-quality index."

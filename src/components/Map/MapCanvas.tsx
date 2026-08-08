@@ -28,6 +28,17 @@ interface MapCanvasProps {
   zoom: number;
 }
 
+function encodeEvalscript(evalscript: string): string {
+  const bytes = new TextEncoder().encode(evalscript);
+  let binary = '';
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary);
+}
+
 export function MapCanvas({
   center,
   clearDrawingsSignal,
@@ -42,6 +53,11 @@ export function MapCanvas({
   selectedTileTime,
   zoom,
 }: MapCanvasProps) {
+  const renderConfig = selectedIndicator.type === 'natural'
+    ? undefined
+    : selectedIndicator.render;
+  const renderedLayer = renderConfig?.layer ?? selectedLayer;
+
   return (
     <MapContainer
       center={center}
@@ -58,13 +74,18 @@ export function MapCanvas({
         <WMSTileLayer
           key={`${selectedLayer}-${selectedAcquisitionDate ?? 'latest'}`}
           url={appConfig.copernicusWmsUrl}
-          layers={selectedLayer}
+          layers={renderedLayer}
           format="image/png"
           transparent
           version="1.3.0"
           params={{
-            layers: selectedLayer,
-            MAXCC: DEFAULT_MAX_CLOUD_COVERAGE,
+            layers: renderedLayer,
+            ...(selectedIndicator.acquisitionCollection === 'sentinel-1'
+              ? {}
+              : { MAXCC: DEFAULT_MAX_CLOUD_COVERAGE }),
+            ...(renderConfig?.evalscript
+              ? { EVALSCRIPT: encodeEvalscript(renderConfig.evalscript) }
+              : {}),
             ...(selectedTileTime ? { TIME: selectedTileTime } : {}),
           } as unknown as L.WMSParams}
         />

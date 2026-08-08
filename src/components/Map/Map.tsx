@@ -30,7 +30,7 @@ export interface MapProps {
 }
 
 export function Map({
-  center = [20.27, -103.2],
+  center = [21.52324, -87.37781],
   zoom = 12,
   services = appServices,
 }: MapProps) {
@@ -48,6 +48,7 @@ export function Map({
 
   const acquisitions = useAcquisitionDates({
     center,
+    collection: selectedIndicator.acquisitionCollection ?? 'sentinel-2',
     mapRef,
     provider: services.acquisitionDates,
   });
@@ -159,6 +160,7 @@ export function Map({
 
       {isDetailVisible && (
         <AnalysisDetailsPanel
+          acquiredAt={acquisitions.selectedAcquisition?.acquiredAt}
           indicator={selectedIndicator}
           onClearPoint={pointAnalysis.clear}
           onClose={() => setIsDetailVisible(false)}
