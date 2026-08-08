@@ -4,6 +4,14 @@ Status: blocked for scientific concentration output, transport-safe fallback imp
 
 Date verified: 2026-08-07.
 
+Update on 2026-08-08: the application-level `Dissolved Oxygen` indicator has
+been replaced by a versioned `Water Quality` integration for MAGO indices 0
+(chlorophyll-a by NDCI), 5 (turbidity), 6 (CDOM), and 7 (high-range TSS). Their buttons,
+scientifically bounded visualization scales, attributions, evalscripts, and
+tests are present. They are supplied as per-request WMS evalscripts and have not
+been deployed as dedicated layers to the public Sentinel Hub WMS instance.
+See `docs/mago-water-quality-index.md` for the exact deployment boundary.
+
 ## Repository and pull request boundary
 
 - Repository: `ArkVault/oracular-v2`.
@@ -64,7 +72,7 @@ The adapter applies this priority:
 4. Set `isOutOfArea` only when the provider returns no feature or an explicit `dataMask=0`.
 5. Use a fixed point-sized EPSG:4326 query so screen zoom and device pixel ratio do not change the analytical request.
 
-No scientific algorithm, calibrated palette, Delta E threshold, uncertainty, or water-quality classification is implemented because the required source evidence is absent.
+No provider-RGB inversion, Delta E threshold, or water-quality classification is implemented. The separately versioned MAGO visualization evalscripts documented in `docs/mago-water-quality-index.md` do not change this point-analysis boundary: scalar values remain unavailable until a Processing or Statistical API integration returns their analytical outputs.
 
 ## Recommended next phase
 

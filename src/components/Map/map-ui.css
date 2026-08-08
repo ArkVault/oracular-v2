@@ -326,6 +326,35 @@
   height: 18px;
 }
 
+.oracular-acquisition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: -12px 0 20px;
+  padding: 7px 10px;
+  border: 1px solid rgb(125 211 252 / 24%);
+  border-radius: 999px;
+  background: rgb(125 211 252 / 9%);
+  color: rgb(224 242 254 / 86%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.035em;
+}
+
+.oracular-acquisition-badge svg {
+  width: 13px;
+  height: 13px;
+  color: rgb(125 211 252 / 90%);
+}
+
+.oracular-acquisition-badge > span:first-of-type {
+  color: rgb(255 255 255 / 48%);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .oracular-indicator-list {
   display: grid;
   gap: 12px;
@@ -386,6 +415,97 @@
   stroke-width: 1.8;
 }
 
+.oracular-indicator-group {
+  display: grid;
+  gap: 8px;
+}
+
+.oracular-indicator-button__chevron {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: rgb(255 255 255 / 45%);
+  transition: transform 180ms ease;
+}
+
+.oracular-indicator-button__chevron.is-expanded {
+  transform: rotate(180deg);
+}
+
+.oracular-subindicator-list {
+  display: grid;
+  gap: 6px;
+  padding: 0 0 2px 34px;
+}
+
+.oracular-subindicator-button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 4%);
+  color: rgb(255 255 255 / 70%);
+  text-align: left;
+}
+
+.oracular-subindicator-button.is-available {
+  cursor: pointer;
+  border-color: rgb(255 255 255 / 15%);
+  background: rgb(255 255 255 / 7%);
+  color: rgb(255 255 255 / 90%);
+}
+
+.oracular-subindicator-button.is-available small {
+  color: rgb(165 243 252 / 78%);
+}
+
+.oracular-subindicator-button:not(:disabled):hover,
+.oracular-subindicator-button.is-selected {
+  border-color: rgb(125 211 252 / 35%);
+  background: rgb(125 211 252 / 10%);
+  color: #fff;
+}
+
+.oracular-subindicator-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.oracular-subindicator-button__index {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 7px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.oracular-subindicator-button__content {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.oracular-subindicator-button__content strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oracular-subindicator-button__content small {
+  color: rgb(255 255 255 / 42%);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
 .oracular-panel-toggle {
   position: absolute;
   z-index: 975;
@@ -414,9 +534,13 @@
 }
 
 .oracular-detail-panel {
+  top: 104px;
   right: 24px;
+  bottom: 24px;
+  max-height: none;
   overflow: auto;
   padding: 24px;
+  transform: none;
 }
 
 .oracular-layer-details {
@@ -429,6 +553,30 @@
   font-size: 14px;
   font-weight: 300;
   line-height: 1.65;
+}
+
+.oracular-implementation-note {
+  padding: 14px 16px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 4%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.oracular-implementation-note > span {
+  display: block;
+  margin-bottom: 7px;
+  color: rgb(255 255 255 / 60%);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.oracular-implementation-note p {
+  color: rgb(255 255 255 / 70%);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .oracular-reference {
@@ -460,11 +608,11 @@
 
 .oracular-continuous-legend {
   display: grid;
-  grid-template-columns: auto 34px 1fr;
+  grid-template-columns: minmax(0, 1fr) 34px;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  width: 150px;
+  width: 100%;
   min-height: 160px;
   margin: 0 auto;
 }
@@ -496,6 +644,31 @@
 .oracular-continuous-legend__unit {
   color: rgb(255 255 255 / 72%);
   font-size: 12px;
+}
+
+.oracular-citation {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-left: 2px solid rgb(125 211 252 / 70%);
+  background: rgb(125 211 252 / 6%);
+}
+
+.oracular-citation span {
+  color: rgb(255 255 255 / 48%);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.oracular-citation a {
+  color: rgb(255 255 255 / 82%);
+  font-size: 11px;
+  line-height: 1.45;
+  text-decoration: underline;
+  text-decoration-color: rgb(125 211 252 / 45%);
+  text-underline-offset: 3px;
 }
 
 .oracular-discrete-legend {
@@ -734,6 +907,7 @@
   .oracular-detail-panel {
     top: 86px;
     right: 12px;
+    bottom: auto;
     width: min(300px, calc(100vw - 24px));
     max-height: calc(100dvh - 110px);
     transform: none;
