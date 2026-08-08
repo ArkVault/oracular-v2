@@ -1,7 +1,11 @@
 import * as React from 'react';
 import type L from 'leaflet';
 
-import type { AcquisitionDateProvider } from '@/features/acquisitions/ports/acquisition-date-provider';
+import type {
+  AcquisitionCollection,
+  AcquisitionDate,
+  AcquisitionDateProvider,
+} from '@/features/acquisitions/ports/acquisition-date-provider';
 import {
   acquisitionDateToLocalDate,
   toWmsDayTimeRange,
@@ -10,21 +14,32 @@ import { DEFAULT_MAX_CLOUD_COVERAGE } from '@/features/acquisitions/domain/cloud
 
 interface UseAcquisitionDatesOptions {
   center: [number, number];
+  collection: AcquisitionCollection;
   mapRef: React.MutableRefObject<L.Map | null>;
   provider: AcquisitionDateProvider;
 }
 
 export function useAcquisitionDates({
   center,
+  collection,
   mapRef,
   provider,
 }: UseAcquisitionDatesOptions) {
+  const centerLatitude = center[0];
+  const centerLongitude = center[1];
+  const activeCollectionRef = React.useRef(collection);
+  const loadedCollectionRef = React.useRef<AcquisitionCollection | undefined>(undefined);
+  const loadingCollectionRef = React.useRef<AcquisitionCollection | undefined>(undefined);
   const [selectedDate, setSelectedDate] = React.useState<string>();
-  const [availableDates, setAvailableDates] = React.useState<string[]>([]);
+  const [availableAcquisitions, setAvailableAcquisitions] = React.useState<AcquisitionDate[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>();
   const [calendarMonth, setCalendarMonth] = React.useState(new Date());
 
+  const availableDates = React.useMemo(
+    () => availableAcquisitions.map((acquisition) => acquisition.date),
+    [availableAcquisitions],
+  );
   const availableDateSet = React.useMemo(
     () => new Set(availableDates),
     [availableDates],
@@ -39,14 +54,29 @@ export function useAcquisitionDates({
   const selectedTileTime = selectedDate
     ? toWmsDayTimeRange(selectedDate)
     : undefined;
+  const selectedAcquisition = availableAcquisitions.find(
+    (acquisition) => acquisition.date === selectedDate,
+  );
+
+  React.useEffect(() => {
+    activeCollectionRef.current = collection;
+  }, [collection]);
 
   const load = React.useCallback(async () => {
+    if (
+      loadedCollectionRef.current === collection
+      || loadingCollectionRef.current === collection
+    ) {
+      return;
+    }
+
     const bounds = mapRef.current?.getBounds();
     const to = new Date();
     const from = new Date(to);
     from.setUTCFullYear(to.getUTCFullYear() - 1);
 
     setIsLoading(true);
+    loadingCollectionRef.current = collection;
     setError(undefined);
     try {
       const acquisitions = await provider.list({
@@ -58,31 +88,48 @@ export function useAcquisitionDates({
               east: bounds.getEast(),
             }
           : {
-              south: center[0] - 0.15,
-              west: center[1] - 0.15,
-              north: center[0] + 0.15,
-              east: center[1] + 0.15,
+              south: centerLatitude - 0.15,
+              west: centerLongitude - 0.15,
+              north: centerLatitude + 0.15,
+              east: centerLongitude + 0.15,
             },
         from,
         to,
         maxCloudCoverage: DEFAULT_MAX_CLOUD_COVERAGE,
+        collection,
       });
+      if (activeCollectionRef.current !== collection) {
+        return;
+      }
       const dates = acquisitions.map((acquisition) => acquisition.date);
-      setAvailableDates(dates);
+      setAvailableAcquisitions(acquisitions);
       if (dates[0]) {
         setCalendarMonth(acquisitionDateToLocalDate(dates[0]));
       }
       setSelectedDate((current) =>
-        current && dates.includes(current) ? current : undefined,
+        current && dates.includes(current) ? current : dates[0],
       );
+      loadedCollectionRef.current = collection;
     } catch (loadError) {
+      if (activeCollectionRef.current !== collection) {
+        return;
+      }
       console.error('Error fetching Copernicus acquisition dates:', loadError);
-      setAvailableDates([]);
+      setAvailableAcquisitions([]);
       setError('Unable to load Copernicus dates for this area.');
     } finally {
-      setIsLoading(false);
+      if (loadingCollectionRef.current === collection) {
+        loadingCollectionRef.current = undefined;
+      }
+      if (activeCollectionRef.current === collection) {
+        setIsLoading(false);
+      }
     }
-  }, [center, mapRef, provider]);
+  }, [centerLatitude, centerLongitude, collection, mapRef, provider]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
 
   return {
     availableCalendarDates,
@@ -93,6 +140,7 @@ export function useAcquisitionDates({
     isLoading,
     load,
     selectedCalendarDate,
+    selectedAcquisition,
     selectedDate,
     selectedTileTime,
     setCalendarMonth,

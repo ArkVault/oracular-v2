@@ -11,12 +11,14 @@ interface WfsFeatureCollection {
     properties?: {
       id?: unknown;
       date?: unknown;
+      time?: unknown;
       cloudCoverPercentage?: unknown;
     };
   }>;
 }
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?$/;
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -28,6 +30,15 @@ function isValidIsoDate(value: unknown): value is string {
     ISO_DATE_PATTERN.test(value) &&
     !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
   );
+}
+
+function toAcquisitionTimestamp(date: string, time: unknown): string | undefined {
+  if (typeof time !== 'string' || !ISO_TIME_PATTERN.test(time)) {
+    return undefined;
+  }
+
+  const timestamp = new Date(`${date}T${time}Z`);
+  return Number.isNaN(timestamp.getTime()) ? undefined : timestamp.toISOString();
 }
 
 export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProvider {
@@ -42,11 +53,12 @@ export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProv
 
   async list(query: AcquisitionDateQuery, signal?: AbortSignal): Promise<AcquisitionDate[]> {
     const url = new URL(this.wmsUrl.replace('/ogc/wms/', '/ogc/wfs/'));
-    url.search = new URLSearchParams({
+    const isSentinel1 = query.collection === 'sentinel-1';
+    const parameters: Record<string, string> = {
       SERVICE: 'WFS',
       VERSION: '2.0.0',
       REQUEST: 'GetFeature',
-      TYPENAMES: 'S2.TILE',
+      TYPENAMES: isSentinel1 ? 'DSS3' : 'S2.TILE',
       OUTPUTFORMAT: 'application/json',
       SRSNAME: 'EPSG:4326',
       // WFS 2.0 follows the EPSG:4326 latitude/longitude axis order.
@@ -57,9 +69,12 @@ export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProv
         query.bounds.east,
       ].join(','),
       TIME: `${toIsoDate(query.from)}/${toIsoDate(query.to)}`,
-      MAXCC: String(query.maxCloudCoverage),
       MAXFEATURES: '500',
-    }).toString();
+    };
+    if (!isSentinel1) {
+      parameters.MAXCC = String(query.maxCloudCoverage);
+    }
+    url.search = new URLSearchParams(parameters).toString();
 
     const response = await this.fetcher(url, createExternalRequestInit(signal));
     if (!response.ok) {
@@ -71,21 +86,25 @@ export class CopernicusWfsAcquisitionDateProvider implements AcquisitionDateProv
 
     for (const feature of payload.features ?? []) {
       const properties = feature.properties;
-      const cloudCoverage = Number(properties?.cloudCoverPercentage);
+      const cloudCoverage = isSentinel1 ? 0 : Number(properties?.cloudCoverPercentage);
       const date = properties?.date;
+      const acquiredAt = isValidIsoDate(date)
+        ? toAcquisitionTimestamp(date, properties?.time)
+        : undefined;
       const acquisitionId = properties?.id;
 
       if (
         !isValidIsoDate(date) ||
+        !acquiredAt ||
         typeof acquisitionId !== 'string' ||
-        !isCloudCoverageEligible(cloudCoverage, query.maxCloudCoverage)
+        (!isSentinel1 && !isCloudCoverageEligible(cloudCoverage, query.maxCloudCoverage))
       ) {
         continue;
       }
 
       const current = datesByDay.get(date);
       if (!current || cloudCoverage < current.cloudCoverage) {
-        datesByDay.set(date, { date, cloudCoverage, acquisitionId });
+        datesByDay.set(date, { date, acquiredAt, cloudCoverage, acquisitionId });
       }
     }
 
