@@ -128,7 +128,7 @@ context.
 | Interface | Tailwind CSS, shadcn conventions, Radix Slot, Lucide icons |
 | Dates | React DayPicker, date-fns |
 | Testing | Vitest, Testing Library, jsdom, V8 coverage |
-| Hosting | Vercel |
+| Hosting | Netlify |
 
 ## Local development
 
@@ -211,15 +211,16 @@ these measurements are a local checkpoint, not a permanent performance budget.
 
 ## Deployment
 
-The production target is [orber.app](https://orber.app). The repository includes
-hardened Vercel configuration but intentionally excludes the Vercel CLI from the
-dependency tree. Deploy through Vercel's Git integration or an authenticated
-local Vercel CLI:
+The production target is [orber.app](https://orber.app), hosted by the Netlify
+site `orber-geospatial-demo-v3`. The versioned `netlify.toml` defines the build,
+publish directory, single-page application fallback and security headers.
 
-1. Connect `ArkVault/oracular-v2` to a Vercel project.
-2. Configure `main` as the production branch.
-3. Use `development` and pull requests for Preview deployments.
-4. Store private values only in Vercel's server-side environment configuration.
+1. Connect `ArkVault/oracular-v2` to the Netlify site.
+2. Configure `main` as the production branch and `npm run build` as the build
+   command.
+3. Publish the generated `dist/` directory.
+4. Use `development` and pull requests for Deploy Previews.
+5. Store private values only in Netlify's server-side environment configuration.
 
 Preview validation and production readiness are separate release gates. A
 successful local build does not by itself establish that OAuth, provider
@@ -252,14 +253,15 @@ The next planned product slices are:
 3. Extend acquisition selection with stable scene identity and richer metadata.
 4. Add automated end-to-end coverage for authentication, calendar, WMS loading
    and point analysis.
-5. Establish verified Vercel Preview and controlled production release gates.
+5. Establish verified Netlify Deploy Preview and controlled production release
+   gates.
 
 The detailed sequence and acceptance criteria are maintained in the
 [Product roadmap](docs/product-roadmap.md).
 
 ## Security
 
-- Do not commit `.env`, tokens, provider credentials, private keys or Vercel
+- Do not commit `.env`, tokens, provider credentials, private keys or Netlify
   state.
 - Never place secrets in `VITE_` variables; Vite exposes them to the client.
 - Keep OAuth exchanges and privileged provider calls in managed server-side
