@@ -36,17 +36,15 @@ export function AnalysisDetailsPanel({
           <X />
         </button>
       </div>
-      {indicator.type !== 'natural' && (
-        <div className="oracular-acquisition-badge" aria-label="Image acquisition">
-          <CalendarClock aria-hidden="true" />
-          <span>Acquired</span>
-          {acquiredAt ? (
-            <time dateTime={acquiredAt}>{formatAcquisitionTimestamp(acquiredAt)}</time>
-          ) : (
-            <span>Timestamp unavailable</span>
-          )}
-        </div>
-      )}
+      <div className="oracular-acquisition-badge" aria-label="Image acquisition">
+        <CalendarClock aria-hidden="true" />
+        <span>Acquired</span>
+        {acquiredAt ? (
+          <time dateTime={acquiredAt}>{formatAcquisitionTimestamp(acquiredAt)}</time>
+        ) : (
+          <span>Timestamp unavailable</span>
+        )}
+      </div>
       {pointInfo && (
         <PointInfoSection
           info={pointInfo}

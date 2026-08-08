@@ -28,8 +28,9 @@ export function useAcquisitionDates({
   const centerLatitude = center[0];
   const centerLongitude = center[1];
   const activeCollectionRef = React.useRef(collection);
-  const loadedCollectionRef = React.useRef<AcquisitionCollection | undefined>(undefined);
-  const loadingCollectionRef = React.useRef<AcquisitionCollection | undefined>(undefined);
+  const activeRequestRef = React.useRef(0);
+  const loadedQueryRef = React.useRef<string | undefined>(undefined);
+  const loadingQueryRef = React.useRef<string | undefined>(undefined);
   const [selectedDate, setSelectedDate] = React.useState<string>();
   const [availableAcquisitions, setAvailableAcquisitions] = React.useState<AcquisitionDate[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -63,42 +64,53 @@ export function useAcquisitionDates({
   }, [collection]);
 
   const load = React.useCallback(async () => {
-    if (
-      loadedCollectionRef.current === collection
-      || loadingCollectionRef.current === collection
-    ) {
+    const mapBounds = mapRef.current?.getBounds();
+    const bounds = mapBounds
+      ? {
+          south: mapBounds.getSouth(),
+          west: mapBounds.getWest(),
+          north: mapBounds.getNorth(),
+          east: mapBounds.getEast(),
+        }
+      : {
+          south: centerLatitude - 0.15,
+          west: centerLongitude - 0.15,
+          north: centerLatitude + 0.15,
+          east: centerLongitude + 0.15,
+        };
+    const queryKey = [
+      collection,
+      bounds.south,
+      bounds.west,
+      bounds.north,
+      bounds.east,
+    ].join(':');
+
+    if (loadedQueryRef.current === queryKey || loadingQueryRef.current === queryKey) {
       return;
     }
 
-    const bounds = mapRef.current?.getBounds();
+    const requestId = activeRequestRef.current + 1;
+    activeRequestRef.current = requestId;
     const to = new Date();
     const from = new Date(to);
     from.setUTCFullYear(to.getUTCFullYear() - 1);
 
     setIsLoading(true);
-    loadingCollectionRef.current = collection;
+    loadingQueryRef.current = queryKey;
     setError(undefined);
     try {
       const acquisitions = await provider.list({
-        bounds: bounds
-          ? {
-              south: bounds.getSouth(),
-              west: bounds.getWest(),
-              north: bounds.getNorth(),
-              east: bounds.getEast(),
-            }
-          : {
-              south: centerLatitude - 0.15,
-              west: centerLongitude - 0.15,
-              north: centerLatitude + 0.15,
-              east: centerLongitude + 0.15,
-            },
+        bounds,
         from,
         to,
         maxCloudCoverage: DEFAULT_MAX_CLOUD_COVERAGE,
         collection,
       });
-      if (activeCollectionRef.current !== collection) {
+      if (
+        activeCollectionRef.current !== collection
+        || activeRequestRef.current !== requestId
+      ) {
         return;
       }
       const dates = acquisitions.map((acquisition) => acquisition.date);
@@ -109,19 +121,25 @@ export function useAcquisitionDates({
       setSelectedDate((current) =>
         current && dates.includes(current) ? current : dates[0],
       );
-      loadedCollectionRef.current = collection;
+      loadedQueryRef.current = queryKey;
     } catch (loadError) {
-      if (activeCollectionRef.current !== collection) {
+      if (
+        activeCollectionRef.current !== collection
+        || activeRequestRef.current !== requestId
+      ) {
         return;
       }
       console.error('Error fetching Copernicus acquisition dates:', loadError);
       setAvailableAcquisitions([]);
       setError('Unable to load Copernicus dates for this area.');
     } finally {
-      if (loadingCollectionRef.current === collection) {
-        loadingCollectionRef.current = undefined;
+      if (loadingQueryRef.current === queryKey) {
+        loadingQueryRef.current = undefined;
       }
-      if (activeCollectionRef.current === collection) {
+      if (
+        activeCollectionRef.current === collection
+        && activeRequestRef.current === requestId
+      ) {
         setIsLoading(false);
       }
     }
@@ -130,6 +148,22 @@ export function useAcquisitionDates({
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  React.useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+
+    const handleMoveEnd = () => {
+      void load();
+    };
+
+    map.on('moveend', handleMoveEnd);
+    return () => {
+      map.off('moveend', handleMoveEnd);
+    };
+  }, [load, mapRef]);
 
   return {
     availableCalendarDates,

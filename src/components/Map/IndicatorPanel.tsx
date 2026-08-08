@@ -25,7 +25,7 @@ export function IndicatorPanel({
   return (
     <>
       <div
-        className={`oracular-panel oracular-indicator-panel ${
+        className={`oracular-panel oracular-indicator-panel has-glass-edge ${
           isVisible ? 'is-visible' : 'is-hidden'
         }`}
       >

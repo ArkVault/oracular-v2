@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Activity, Bell, Calendar, Search, UserRound, X } from 'lucide-react';
+import { Activity, Bell, Calendar, ListChecks, Search, UserRound, X } from 'lucide-react';
 
 import { Button } from '@/components/UI/button';
 import { Card } from '@/components/UI/card';
@@ -33,10 +33,22 @@ interface PlaceSearchMenuProps {
 
 interface MapHeaderProps {
   acquisitions: AcquisitionDateMenuProps;
+  openDatePickerSignal: number;
+  openSearchSignal: number;
   placeSearch: PlaceSearchMenuProps;
+  workflowGuide: {
+    enabled: boolean;
+    onToggle: () => void;
+  };
 }
 
-export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
+export function MapHeader({
+  acquisitions,
+  openDatePickerSignal,
+  openSearchSignal,
+  placeSearch,
+  workflowGuide,
+}: MapHeaderProps) {
   const [activeOverlay, dispatchOverlay] = React.useReducer(
     headerOverlayReducer,
     null,
@@ -44,6 +56,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
   const showDatePicker = activeOverlay === 'dates';
   const showSensorMenu = activeOverlay === 'sensors';
   const showSearch = activeOverlay === 'search';
+  const loadAcquisitionDates = acquisitions.onLoad;
 
   const toggleDatePicker = () => {
     if (!showDatePicker) {
@@ -59,6 +72,17 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
   const toggleSearch = () => {
     dispatchOverlay({ type: 'toggle', overlay: 'search' });
   };
+
+  React.useEffect(() => {
+    if (openDatePickerSignal === 0) return;
+    void loadAcquisitionDates();
+    dispatchOverlay({ type: 'open', overlay: 'dates' });
+  }, [loadAcquisitionDates, openDatePickerSignal]);
+
+  React.useEffect(() => {
+    if (openSearchSignal === 0) return;
+    dispatchOverlay({ type: 'open', overlay: 'search' });
+  }, [openSearchSignal]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -110,19 +134,29 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
         </Button>
 
         {showDatePicker && (
-          <Card
-            className="date-picker-container oracular-popover oracular-popover--calendar"
-            role="dialog"
-            aria-label="Available acquisition dates"
-          >
+          <>
+            <div
+              className="oracular-calendar-backdrop"
+              data-testid="calendar-backdrop"
+              aria-hidden="true"
+            />
+            <Card
+              className="date-picker-container oracular-popover oracular-popover--calendar"
+              role="dialog"
+              aria-label="Available acquisition dates"
+            >
             <div className="oracular-popover__eyebrow">Copernicus imagery</div>
             <h2>Select acquisition date</h2>
             <AcquisitionCalendar
               selected={acquisitions.selectedCalendarDate}
               onSelect={(date) => {
+                const selectedDate = date ?? acquisitions.selectedCalendarDate;
                 acquisitions.onSelectDate(
-                  date ? localDateToAcquisitionDate(date) : undefined,
+                  selectedDate ? localDateToAcquisitionDate(selectedDate) : undefined,
                 );
+                if (selectedDate) {
+                  dispatchOverlay({ type: 'close', overlay: 'dates' });
+                }
               }}
               month={acquisitions.calendarMonth}
               onMonthChange={acquisitions.onMonthChange}
@@ -133,6 +167,12 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               modifiers={{ available: acquisitions.availableCalendarDates }}
               modifiersClassNames={{ available: 'rdp-day_available' }}
             />
+            {acquisitions.availableDates.length > 0 && !acquisitions.isLoading && (
+              <div className="oracular-calendar-key">
+                <span aria-hidden="true" />
+                Colored dates have available imagery
+              </div>
+            )}
             <div className="oracular-calendar-status" aria-live="polite">
               {acquisitions.isLoading
                 ? 'Loading available Copernicus dates…'
@@ -142,7 +182,8 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
                     ? 'No cloud-safe acquisitions in the last 12 months.'
                     : `${acquisitions.availableDates.length} cloud-safe acquisitions`}
             </div>
-          </Card>
+            </Card>
+          </>
         )}
 
         {showSensorMenu && (
@@ -168,6 +209,18 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
       </div>
 
       <div className="oracular-header__actions">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={workflowGuide.onToggle}
+          className={`oracular-guide-toggle ${workflowGuide.enabled ? 'is-active' : ''}`}
+          aria-label={workflowGuide.enabled ? 'Turn off workflow guide' : 'Turn on workflow guide'}
+          aria-pressed={workflowGuide.enabled}
+        >
+          <ListChecks />
+          <span>Guide</span>
+          <i aria-hidden="true" />
+        </Button>
         <div className="oracular-search-wrap">
           <Button
             type="button"

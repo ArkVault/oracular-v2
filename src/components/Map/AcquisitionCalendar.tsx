@@ -25,7 +25,7 @@ export function AcquisitionCalendar(props: AcquisitionCalendarProps) {
         mode="single"
         numberOfMonths={1}
         className="bg-transparent text-white"
-        showOutsideDays
+        showOutsideDays={false}
         fixedWeeks
       />
     </React.Suspense>
