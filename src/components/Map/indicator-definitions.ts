@@ -1,10 +1,11 @@
 import {
-  Droplets,
-  Eye,
+  Droplet,
+  FlaskConical,
   Flame,
   Gauge,
   Leaf,
-  Waves,
+  Satellite,
+  Sprout,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,7 +67,7 @@ export interface WaterQualityIndexOption {
 
 export const WATER_QUALITY_INDICATOR: ContinuousIndicator = {
   name: 'Water Quality',
-  icon: Gauge,
+  icon: FlaskConical,
   layer: 'WATER-QUALITY',
   render: {
     layer: 'CHLA',
@@ -133,7 +134,6 @@ export const WATER_QUALITY_TSS_INDICATOR: ContinuousIndicator = {
 };
 
 export const WATER_QUALITY_INDEX_OPTIONS: WaterQualityIndexOption[] = [
-  { index: 0, label: 'Chlorophyll-a (NDCI)', unit: 'mg/m³', indicator: WATER_QUALITY_INDICATOR },
   { index: 6, label: 'CDOM', unit: 'µg/L QSE', indicator: WATER_QUALITY_CDOM_INDICATOR },
   { index: 5, label: 'Turbidity', unit: 'NTU', indicator: WATER_QUALITY_TURBIDITY_INDICATOR },
   { index: 7, label: 'Total Suspended Solids', unit: 'mg/L', indicator: WATER_QUALITY_TSS_INDICATOR },
@@ -143,16 +143,25 @@ export const INDICATORS: IndicatorDefinition[] = [
   {
     name: 'Natural Color',
     type: 'natural',
-    icon: Eye,
+    icon: Satellite,
     description: 'Natural satellite imagery showing Earth as it appears to the human eye. This view helps identify surface features, vegetation patterns, and water bodies in their true colors using cloud-free imagery for optimal visibility.',
     quote: 'Reference: European Space Agency. (2015). Sentinel-2 User Handbook (Issue 1, Revision 2).',
   },
   {
     name: 'Chlorophyll-a',
-    icon: Droplets,
+    icon: Sprout,
     layer: 'CHLA',
-    description: 'Chlorophyll-a is the primary photosynthetic pigment found in all plants and algae. High concentrations in water bodies indicate algal blooms, which can affect water quality and ecosystem health. Regular monitoring helps identify potential eutrophication issues and assess the overall health of aquatic ecosystems.',
-    quote: 'Scientific method unavailable: the configured CHLA evalscript, bands, coefficients, and calibration have not been supplied.',
+    description: 'The configured CHLA layer is retained as a qualitative screening view of spatial patterns potentially related to chlorophyll-a. It must not be interpreted as a concentration map until the provider supplies its evalscript, input bands, preprocessing level, coefficients, palette mapping, calibration domain, and local validation evidence.',
+    implementationNote: 'Compared with the published Ulyssys benchmark, Oracular does not claim MCI equivalence or calibrated chlorophyll-a concentration because the remote CHLA evalscript is not exposed. Oracular improvements are therefore traceability and delivery safeguards: no fabricated numeric scale, no inversion of rendered RGB into point concentrations, an acquisition timestamp, latest-request-only WMS loading, and atomic reveal of the completed tile mosaic. These improve scientific honesty and map reliability, not the undisclosed spectral algorithm.',
+    quote: 'Scientific compliance review — Ulyssys is a qualitative MCI benchmark for Sentinel-2, using B05 relative to a B04–B06 baseline and a default −0.005 to 0.05 display interval. The configured provider CHLA method is undisclosed, so algorithmic equivalence and quantitative values remain unverified.',
+    citation: {
+      label: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
+      href: 'https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/ulyssys_water_quality_viewer/',
+    },
+    additionalCitations: [{
+      label: 'Ulyssys technical description supplementary',
+      href: 'https://doi.org/10.20944/preprints202001.0386.v1',
+    }],
   },
   WATER_QUALITY_INDICATOR,
   {
@@ -169,7 +178,7 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     name: 'Oil Spill Detection',
-    icon: Waves,
+    icon: Droplet,
     type: 'discrete',
     layer: 'OIL-SPILL-SAR',
     acquisitionCollection: 'sentinel-1',

@@ -18,6 +18,7 @@ import { MapCanvas } from './MapCanvas';
 import { MapControls } from './MapControls';
 import { MapHeader } from './MapHeader';
 import type { DrawMode } from './map-types';
+import { WorkflowGuide, type WorkflowGuideStep } from './WorkflowGuide';
 
 import '../UI/parameter-loader.css';
 import './loader.css';
@@ -29,12 +30,41 @@ export interface MapProps {
   services?: AppServices;
 }
 
+const WORKFLOW_GUIDE_PREFERENCE_KEY = 'oracular.workflow-guide';
+const MAP_TYPOGRAPHY_STYLE = {
+  '--oracular-font-body': '"DM Sans", ui-sans-serif, system-ui, sans-serif',
+  '--oracular-font-title': '"Figtree", ui-sans-serif, system-ui, sans-serif',
+} as React.CSSProperties;
+
+function isWorkflowGuideInitiallyEnabled() {
+  try {
+    return globalThis.localStorage?.getItem(WORKFLOW_GUIDE_PREFERENCE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function saveWorkflowGuidePreference(enabled: boolean) {
+  try {
+    if (enabled) {
+      globalThis.localStorage?.removeItem(WORKFLOW_GUIDE_PREFERENCE_KEY);
+    } else {
+      globalThis.localStorage?.setItem(WORKFLOW_GUIDE_PREFERENCE_KEY, 'off');
+    }
+  } catch {
+    // Keep the in-memory preference when storage is unavailable.
+  }
+}
+
 export function Map({
-  center = [21.52324, -87.37781],
-  zoom = 12,
+  center = [18.64592, -91.82991],
+  zoom = 10,
   services = appServices,
 }: MapProps) {
   const mapRef = React.useRef<L.Map | null>(null);
+  const indicatorLoadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const [isIndicatorPanelVisible, setIsIndicatorPanelVisible] = React.useState(true);
   const [isDetailVisible, setIsDetailVisible] = React.useState(true);
   const [selectedIndicator, setSelectedIndicator] = React.useState<IndicatorDefinition>(
@@ -45,6 +75,12 @@ export function Map({
   const [drawMode, setDrawMode] = React.useState<DrawMode>(null);
   const [drawingToolsActivated, setDrawingToolsActivated] = React.useState(false);
   const [clearDrawingsSignal, setClearDrawingsSignal] = React.useState(0);
+  const [isWorkflowGuideEnabled, setIsWorkflowGuideEnabled] = React.useState(
+    isWorkflowGuideInitiallyEnabled,
+  );
+  const [workflowGuideStep, setWorkflowGuideStep] = React.useState<WorkflowGuideStep>('search');
+  const [openDatePickerSignal, setOpenDatePickerSignal] = React.useState(0);
+  const [openSearchSignal, setOpenSearchSignal] = React.useState(0);
 
   const acquisitions = useAcquisitionDates({
     center,
@@ -61,23 +97,59 @@ export function Map({
     selectedLayer,
   });
 
-  const handleIndicatorSelect = async (indicator: IndicatorDefinition) => {
+  React.useEffect(() => () => {
+    if (indicatorLoadTimeoutRef.current) {
+      clearTimeout(indicatorLoadTimeoutRef.current);
+    }
+  }, []);
+
+  const handleIndicatorSelect = (indicator: IndicatorDefinition) => {
+    const shouldAdvanceWorkflow = isWorkflowGuideEnabled
+      && workflowGuideStep === 'indicators';
+
+    if (indicatorLoadTimeoutRef.current) {
+      clearTimeout(indicatorLoadTimeoutRef.current);
+    }
+
+    // Unmount the active WMS layer immediately so superseded network work cannot
+    // remain visible or be paired with the newly selected indicator config.
+    setSelectedLayer('');
     setIsIndicatorLoading(true);
     setSelectedIndicator(indicator);
     setIsDetailVisible(true);
     pointAnalysis.clear();
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, appConfig.indicatorLoadingDelayMs),
-    );
-
-    setSelectedLayer(indicator.type === 'natural' ? '' : indicator.layer || '');
-    setIsIndicatorLoading(false);
+    indicatorLoadTimeoutRef.current = setTimeout(() => {
+      setSelectedLayer(indicator.type === 'natural' ? '' : indicator.layer || '');
+      if (indicator.type === 'natural') {
+        setIsIndicatorLoading(false);
+      }
+      indicatorLoadTimeoutRef.current = undefined;
+      if (shouldAdvanceWorkflow) {
+        setWorkflowGuideStep('ready');
+      }
+    }, appConfig.indicatorLoadingDelayMs);
   };
 
   const handleLocationSelect = (result: PlaceSearchResult) => {
     mapRef.current?.setView([result.latitude, result.longitude], 12);
     placeSearch.clear();
+    if (isWorkflowGuideEnabled && workflowGuideStep === 'search') {
+      setWorkflowGuideStep('dates');
+    }
+  };
+
+  const handleWorkflowGuideToggle = () => {
+    setIsWorkflowGuideEnabled((enabled) => {
+      if (!enabled) setWorkflowGuideStep('search');
+      saveWorkflowGuidePreference(!enabled);
+      return !enabled;
+    });
+  };
+
+  const dismissWorkflowGuide = () => {
+    setIsWorkflowGuideEnabled(false);
+    saveWorkflowGuidePreference(false);
   };
 
   const handleSaveKml = React.useCallback((kml: string) => {
@@ -103,7 +175,15 @@ export function Map({
   };
 
   return (
-    <div className={`map-shell ${pointAnalysis.pointInfo ? 'has-analysis-result' : ''}`}>
+    <div
+      className={[
+        'map-shell',
+        pointAnalysis.pointInfo ? 'has-analysis-result' : '',
+        isWorkflowGuideEnabled ? 'has-workflow-guide' : '',
+        isWorkflowGuideEnabled ? `workflow-step-${workflowGuideStep}` : '',
+      ].filter(Boolean).join(' ')}
+      style={MAP_TYPOGRAPHY_STYLE}
+    >
       <MapHeader
         acquisitions={{
           availableCalendarDates: acquisitions.availableCalendarDates,
@@ -114,9 +194,16 @@ export function Map({
           isLoading: acquisitions.isLoading,
           onLoad: acquisitions.load,
           onMonthChange: acquisitions.setCalendarMonth,
-          onSelectDate: acquisitions.setSelectedDate,
+          onSelectDate: (date) => {
+            acquisitions.setSelectedDate(date);
+            if (date && isWorkflowGuideEnabled && workflowGuideStep === 'dates') {
+              setWorkflowGuideStep('indicators');
+            }
+          },
           selectedCalendarDate: acquisitions.selectedCalendarDate,
         }}
+        openDatePickerSignal={openDatePickerSignal}
+        openSearchSignal={openSearchSignal}
         placeSearch={{
           isSearching: placeSearch.isSearching,
           onClear: placeSearch.clear,
@@ -124,6 +211,10 @@ export function Map({
           onSelect: handleLocationSelect,
           query: placeSearch.query,
           results: placeSearch.results,
+        }}
+        workflowGuide={{
+          enabled: isWorkflowGuideEnabled,
+          onToggle: handleWorkflowGuideToggle,
         }}
       />
 
@@ -135,6 +226,7 @@ export function Map({
         mapRef={mapRef}
         onDrawingComplete={() => setDrawMode(null)}
         onSaveKml={handleSaveKml}
+        onWmsLoadingChange={setIsIndicatorLoading}
         selectedAcquisitionDate={acquisitions.selectedDate}
         selectedIndicator={selectedIndicator}
         selectedLayer={selectedLayer}
@@ -157,6 +249,23 @@ export function Map({
         onToggle={() => setIsIndicatorPanelVisible((visible) => !visible)}
         selectedIndicator={selectedIndicator}
       />
+
+      {isWorkflowGuideEnabled && (
+        <WorkflowGuide
+          step={workflowGuideStep}
+          onBack={() => setWorkflowGuideStep(
+            workflowGuideStep === 'ready'
+              ? 'indicators'
+              : workflowGuideStep === 'indicators'
+                ? 'dates'
+                : 'search',
+          )}
+          onComplete={dismissWorkflowGuide}
+          onDismiss={dismissWorkflowGuide}
+          onOpenDates={() => setOpenDatePickerSignal((signal) => signal + 1)}
+          onOpenSearch={() => setOpenSearchSignal((signal) => signal + 1)}
+        />
+      )}
 
       {isDetailVisible && (
         <AnalysisDetailsPanel

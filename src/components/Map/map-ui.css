@@ -2,27 +2,52 @@
   --oracular-glass: rgb(0 0 0 / 20%);
   --oracular-glass-strong: rgb(0 0 0 / 30%);
   --oracular-border: rgb(255 255 255 / 10%);
+  --oracular-gutter: clamp(12px, 1.8vw, 24px);
+  --oracular-panel-gap: clamp(12px, 1.4vw, 20px);
+  --oracular-panel-width: clamp(220px, 24vw, 320px);
+  --oracular-header-height: clamp(58px, 5vw, 64px);
+  --oracular-content-top: calc(var(--oracular-gutter) + var(--oracular-header-height) + 18px);
+  --oracular-center-width: calc(
+    100vw - var(--oracular-panel-width) - var(--oracular-panel-width) -
+    var(--oracular-gutter) - var(--oracular-gutter) -
+    var(--oracular-panel-gap) - var(--oracular-panel-gap)
+  );
   position: relative;
   width: 100%;
   height: 100dvh;
   overflow: hidden;
   background: #000;
   color: #fff;
-  font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 300;
+  font-family: var(--oracular-font-body);
+  font-optical-sizing: auto;
+  font-weight: 400;
+}
+
+.map-shell h1,
+.map-shell h2,
+.map-shell h3,
+.map-shell h4 {
+  font-family: var(--oracular-font-title);
+}
+
+.map-shell button {
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
 }
 
 .oracular-header {
   position: absolute;
   z-index: 1000;
-  top: 24px;
-  right: 24px;
-  left: 24px;
+  top: var(--oracular-gutter);
+  right: var(--oracular-gutter);
+  left: var(--oracular-gutter);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 62px;
-  padding: 12px 24px;
+  box-sizing: border-box;
+  height: var(--oracular-header-height);
+  padding: clamp(9px, 1vw, 12px) clamp(14px, 1.8vw, 24px);
   border: 1px solid var(--oracular-border);
   border-radius: 16px;
   background: var(--oracular-glass-strong);
@@ -133,12 +158,21 @@
   position: absolute;
   z-index: 1050;
   top: calc(100% + 18px);
+  box-sizing: border-box;
   padding: 18px;
   border: 1px solid var(--oracular-border);
   border-radius: 16px;
   background: rgb(0 0 0 / 48%);
   box-shadow: 0 24px 70px rgb(0 0 0 / 42%);
   backdrop-filter: blur(16px);
+}
+
+.oracular-calendar-backdrop {
+  position: fixed;
+  z-index: 1040;
+  inset: 0;
+  background: rgb(2 8 9 / 12%);
+  backdrop-filter: blur(3px);
 }
 
 .oracular-popover--calendar,
@@ -148,7 +182,7 @@
 }
 
 .oracular-popover--calendar {
-  width: min(370px, calc(100vw - 48px));
+  width: min(370px, var(--oracular-center-width));
 }
 
 .oracular-popover--sensors {
@@ -251,12 +285,281 @@
   color: rgb(255 255 255 / 55%);
 }
 
+.oracular-workflow-guide {
+  position: absolute;
+  z-index: 1040;
+  right: 50%;
+  bottom: var(--oracular-gutter);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  box-sizing: border-box;
+  width: min(540px, var(--oracular-center-width));
+  padding: 14px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 18px;
+  background: rgb(8 16 17 / 74%);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 42%);
+  transform: translateX(50%);
+  backdrop-filter: blur(18px) saturate(125%);
+  animation: oracular-guide-enter 240ms ease-out;
+}
+
+.oracular-workflow-spotlight {
+  position: absolute;
+  z-index: 1020;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.oracular-workflow-spotlight svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+}
+
+.oracular-workflow-spotlight svg > rect {
+  fill: rgb(2 8 9 / 62%);
+}
+
+.oracular-workflow-spotlight__frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: 1px solid rgb(104 244 224 / 90%);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgb(104 244 224 / 12%),
+    0 0 14px rgb(54 230 207 / 32%),
+    inset 0 0 12px rgb(54 230 207 / 8%);
+  transition: width 260ms ease, height 260ms ease, transform 260ms ease;
+}
+
+.oracular-workflow-spotlight__frame > span {
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  padding: 3px 7px;
+  border: 1px solid rgb(104 244 224 / 45%);
+  border-radius: 999px;
+  background: rgb(5 20 19 / 92%);
+  box-shadow: 0 0 10px rgb(54 230 207 / 20%);
+  color: rgb(184 255 245 / 92%);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.oracular-workflow-guide__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgb(121 219 205 / 24%);
+  border-radius: 13px;
+  background: rgb(65 173 159 / 12%);
+  color: rgb(170 244 234 / 92%);
+}
+
+.oracular-workflow-guide__icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.7;
+}
+
+.oracular-workflow-guide__content {
+  min-width: 0;
+}
+
+.oracular-workflow-guide__meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: rgb(255 255 255 / 50%);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.oracular-workflow-guide__progress {
+  display: flex;
+  gap: 4px;
+}
+
+.oracular-workflow-guide__progress span {
+  width: 13px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 17%);
+}
+
+.oracular-workflow-guide__progress span.is-active {
+  background: rgb(125 225 211 / 80%);
+}
+
+.oracular-workflow-guide h2 {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.oracular-workflow-guide p {
+  margin: 0;
+  color: rgb(255 255 255 / 58%);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.oracular-workflow-guide__actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.oracular-workflow-guide__primary,
+.oracular-workflow-guide__back,
+.oracular-workflow-guide__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 12%);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.oracular-workflow-guide__primary {
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-color: rgb(133 226 213 / 28%);
+  border-radius: 10px;
+  background: rgb(71 176 162 / 18%) !important;
+  color: rgb(224 255 250 / 94%);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.oracular-workflow-guide__primary:hover {
+  border-color: rgb(133 226 213 / 46%);
+  background: rgb(71 176 162 / 28%) !important;
+}
+
+.oracular-workflow-guide__primary svg,
+.oracular-workflow-guide__back svg,
+.oracular-workflow-guide__close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.oracular-workflow-guide__back,
+.oracular-workflow-guide__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: rgb(255 255 255 / 54%);
+}
+
+.oracular-workflow-guide__back:hover,
+.oracular-workflow-guide__close:hover {
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+}
+
+.oracular-workflow-guide__close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  border-color: rgb(255 255 255 / 14%);
+  background: rgb(9 14 15 / 92%) !important;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 28%);
+}
+
+.oracular-guide-toggle.is-active {
+  color: rgb(174 241 232 / 95%);
+}
+
+.oracular-guide-toggle {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  color: rgb(255 255 255 / 70%);
+  font-size: 11px;
+  font-weight: 500;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.oracular-guide-toggle:hover,
+.oracular-guide-toggle.is-active {
+  background: rgb(255 255 255 / 9%);
+}
+
+.oracular-guide-toggle svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.7;
+}
+
+.oracular-guide-toggle i {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border: 1px solid rgb(255 255 255 / 26%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 8%);
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.oracular-guide-toggle i::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 55%);
+  content: "";
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.oracular-guide-toggle.is-active i {
+  border-color: rgb(104 244 224 / 55%);
+  background: rgb(54 230 207 / 18%);
+}
+
+.oracular-guide-toggle.is-active i::after {
+  background: rgb(146 255 239 / 96%);
+  box-shadow: 0 0 7px rgb(54 230 207 / 60%);
+  transform: translateX(10px);
+}
+
+@keyframes oracular-guide-enter {
+  from {
+    opacity: 0;
+    transform: translate(50%, 8px) scale(0.98);
+  }
+}
+
 .oracular-panel {
+  box-sizing: border-box;
   z-index: 950;
   border: 1px solid var(--oracular-border);
   border-radius: 16px;
   background: var(--oracular-glass);
   color: #fff;
+  font-family: var(--oracular-font-body);
+  font-variation-settings: "opsz" 14;
   backdrop-filter: blur(16px);
 }
 
@@ -264,22 +567,40 @@
 .oracular-detail-panel {
   position: absolute;
   top: 50%;
-  width: 320px;
+  width: var(--oracular-panel-width);
   max-height: calc(100dvh - 48px);
   transform: translateY(-50%);
 }
 
 .oracular-indicator-panel {
-  left: 24px;
+  top: var(--oracular-content-top);
+  left: var(--oracular-gutter);
+  max-height: calc(100dvh - var(--oracular-content-top) - var(--oracular-gutter));
+  transform: none;
   overflow: hidden;
   padding: 0;
   transition: opacity 300ms ease, transform 300ms ease;
 }
 
+.oracular-indicator-panel.has-glass-edge {
+  border-color: transparent;
+  background:
+    linear-gradient(145deg, rgb(10 28 28 / 54%), rgb(3 11 12 / 42%)) padding-box,
+    linear-gradient(
+      135deg,
+      rgb(224 255 250 / 42%),
+      rgb(255 255 255 / 8%) 38%,
+      rgb(102 225 211 / 24%)
+    ) border-box;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 7%),
+    0 18px 50px rgb(0 0 0 / 24%);
+}
+
 .oracular-indicator-panel.is-hidden {
   pointer-events: none;
   opacity: 0;
-  transform: translate(-110%, -50%) scale(0.98);
+  transform: translateX(-110%) scale(0.98);
 }
 
 .oracular-panel__heading {
@@ -534,12 +855,12 @@
 }
 
 .oracular-detail-panel {
-  top: 104px;
-  right: 24px;
-  bottom: 24px;
+  top: var(--oracular-content-top);
+  right: var(--oracular-gutter);
+  bottom: var(--oracular-gutter);
   max-height: none;
   overflow: auto;
-  padding: 24px;
+  padding: clamp(14px, 1.8vw, 24px);
   transform: none;
 }
 
@@ -551,7 +872,7 @@
 .oracular-layer-description {
   color: rgb(255 255 255 / 78%);
   font-size: 14px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
 }
 
@@ -575,7 +896,9 @@
 
 .oracular-implementation-note p {
   color: rgb(255 255 255 / 70%);
+  font-family: var(--oracular-font-body);
   font-size: 12px;
+  font-weight: 400;
   line-height: 1.55;
 }
 
@@ -586,8 +909,12 @@
   border-radius: 12px;
   background: rgb(255 255 255 / 5%);
   color: rgb(255 255 255 / 54%);
+  font-family: var(--oracular-font-body);
   font-size: 12px;
   font-style: italic;
+  font-variation-settings: "opsz" 12;
+  font-weight: 400;
+  letter-spacing: 0.005em;
   line-height: 1.4;
 }
 
@@ -788,8 +1115,8 @@
 .oracular-map-controls {
   position: absolute;
   z-index: 900;
-  right: 24px;
-  bottom: 24px;
+  right: calc(var(--oracular-gutter) + var(--oracular-panel-width) + var(--oracular-panel-gap));
+  bottom: var(--oracular-gutter);
   display: grid;
   grid-template-columns: repeat(2, 46px);
   gap: 8px 10px;
@@ -820,24 +1147,126 @@
   stroke-width: 1.8;
 }
 
-.rdp {
+.map-shell.has-workflow-guide .oracular-map-controls {
+  top: var(--oracular-content-top);
+  bottom: auto;
+}
+
+.map-shell:has(.oracular-popover--calendar) .oracular-map-controls {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.map-shell:has(.oracular-search-popover) .oracular-detail-panel {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(110%);
+}
+
+.rdp,
+.rdp-root {
   --rdp-accent-color: #d1d5db;
+  --rdp-cell-size: 44px;
+  --rdp-day-height: 46px;
+  --rdp-day-width: 44px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  width: 100%;
   font-size: 13px;
 }
 
+.oracular-popover--calendar .rdp-months {
+  justify-content: center;
+}
+
+.oracular-popover--calendar .rdp-month,
+.oracular-popover--calendar .rdp-table {
+  margin-inline: auto;
+}
+
+.oracular-popover--calendar .rdp-month_caption,
+.oracular-popover--calendar .rdp-caption_label {
+  font-family: var(--oracular-font-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* React DayPicker v8 compatibility for an already-running Vite session. */
+.oracular-popover--calendar .rdp-cell {
+  width: 44px;
+  height: 46px;
+  padding: 5px 4px;
+}
+
+.oracular-popover--calendar .rdp-button.rdp-day {
+  width: 36px;
+  height: 36px;
+  margin: auto;
+}
+
 .rdp-day_selected,
-.rdp-day_selected:hover {
+.rdp-day_selected:hover,
+.rdp-selected .rdp-day_button,
+.rdp-selected .rdp-day_button:hover {
   background-color: rgb(255 255 255 / 18%);
   color: #fff;
 }
 
-.rdp-day_available:not(.rdp-day_selected) {
-  box-shadow: inset 0 -2px rgb(255 255 255 / 55%);
+.rdp-button.rdp-day_available:not(.rdp-day_selected),
+.rdp-day_available:not(.rdp-selected) .rdp-day_button {
+  border: 1px solid rgb(102 225 211 / 62%);
+  border-radius: 9px;
+  background: rgb(40 184 169 / 22%);
+  box-shadow:
+    inset 0 0 0 1px rgb(181 255 246 / 8%),
+    0 0 12px rgb(40 184 169 / 12%);
+  color: #e9fffb;
+  font-weight: 700;
 }
 
-.rdp-day_disabled {
+.rdp-button.rdp-day_available:not(.rdp-day_selected):hover,
+.rdp-day_available:not(.rdp-selected) .rdp-day_button:hover {
+  border-color: rgb(145 246 233 / 82%);
+  background: rgb(40 184 169 / 34%);
+}
+
+.rdp-button.rdp-day_available.rdp-day_selected,
+.rdp-button.rdp-day_available.rdp-day_selected:hover,
+.rdp-day_available.rdp-selected .rdp-day_button,
+.rdp-day_available.rdp-selected .rdp-day_button:hover {
+  border: 1px solid #a8fff4;
+  border-radius: 9px;
+  background: #65ddcf;
+  box-shadow:
+    0 0 0 2px rgb(101 221 207 / 22%),
+    0 0 18px rgb(44 209 190 / 28%);
+  color: #062e2a;
+  font-weight: 800;
+}
+
+.rdp-day_disabled,
+.rdp-disabled:not(.rdp-selected) {
   color: rgb(255 255 255 / 18%);
   opacity: 1;
+}
+
+.oracular-calendar-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: rgb(226 255 250 / 76%);
+  font-size: 11px;
+}
+
+.oracular-calendar-key > span {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border: 1px solid rgb(136 241 228 / 72%);
+  border-radius: 3px;
+  background: rgb(40 184 169 / 32%);
+  box-shadow: 0 0 8px rgb(40 184 169 / 20%);
 }
 
 .oracular-calendar-status {
@@ -849,7 +1278,75 @@
   font-size: 11px;
 }
 
+@media (max-width: 1100px) {
+  .oracular-header__nav,
+  .oracular-header__actions {
+    gap: 6px;
+  }
+
+  .oracular-indicator-panel .oracular-panel__heading,
+  .oracular-indicator-list {
+    padding: clamp(14px, 2vw, 20px);
+  }
+
+  .oracular-indicator-list {
+    gap: 8px;
+  }
+
+  .oracular-indicator-button {
+    min-height: 46px;
+    padding: 11px;
+    font-size: 12px;
+  }
+
+  .oracular-popover--calendar {
+    padding: 14px;
+  }
+
+  .oracular-popover--calendar .rdp,
+  .oracular-popover--calendar .rdp-root {
+    --rdp-cell-size: 34px;
+    --rdp-day-height: 38px;
+    --rdp-day-width: 34px;
+    --rdp-day_button-height: 31px;
+    --rdp-day_button-width: 31px;
+    font-size: 11px;
+  }
+
+  .oracular-popover--calendar .rdp-cell {
+    width: 34px;
+    height: 38px;
+    padding: 3px 2px;
+  }
+
+  .oracular-popover--calendar .rdp-button.rdp-day {
+    width: 31px;
+    height: 31px;
+  }
+
+  .oracular-workflow-guide {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .oracular-workflow-guide__actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .oracular-workflow-guide__icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 @media (max-width: 760px) {
+  .map-shell {
+    --oracular-panel-width: min(280px, calc(100vw - 132px));
+    --oracular-center-width: calc(100vw - 24px);
+  }
+
   .oracular-header {
     top: 12px;
     right: 12px;
@@ -887,10 +1384,23 @@
     display: none;
   }
 
+  .oracular-workflow-guide {
+    right: 12px;
+    bottom: 12px;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: calc(100vw - 24px);
+    transform: none;
+  }
+
+  .oracular-workflow-guide__actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
   .oracular-indicator-panel {
     top: 86px;
     left: 12px;
-    width: min(300px, calc(100vw - 24px));
+    width: var(--oracular-panel-width);
     max-height: calc(100dvh - 110px);
     transform: none;
   }
@@ -908,13 +1418,14 @@
     top: 86px;
     right: 12px;
     bottom: auto;
-    width: min(300px, calc(100vw - 24px));
+    width: var(--oracular-panel-width);
     max-height: calc(100dvh - 110px);
     transform: none;
   }
 
   .oracular-map-controls {
-    right: 12px;
+    right: auto;
+    left: 12px;
     bottom: 12px;
     grid-template-columns: repeat(2, 42px);
     gap: 7px;
@@ -931,6 +1442,46 @@
     opacity: 0;
     transform: translateX(-112%);
   }
+
+  .map-shell.has-workflow-guide .oracular-detail-panel,
+  .map-shell.has-workflow-guide .oracular-map-controls,
+  .map-shell.workflow-step-search .oracular-indicator-panel,
+  .map-shell.workflow-step-dates .oracular-indicator-panel,
+  .map-shell:has(.oracular-popover) .oracular-indicator-panel,
+  .map-shell:has(.oracular-popover) .oracular-detail-panel {
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .map-shell.workflow-step-indicators .oracular-indicator-panel {
+    pointer-events: auto;
+    opacity: 1;
+    transform: none;
+  }
+
+  .map-shell.workflow-step-indicators .oracular-workflow-guide {
+    top: 82px;
+    bottom: auto;
+  }
+
+  .map-shell.workflow-step-indicators .oracular-indicator-panel {
+    top: 230px;
+    max-height: calc(100dvh - 242px);
+  }
+
+  .oracular-popover--calendar,
+  .oracular-popover--sensors {
+    left: 50%;
+    width: calc(100vw - 24px);
+  }
+
+  .oracular-search-popover {
+    position: fixed;
+    top: 82px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -939,5 +1490,9 @@
   .oracular-indicator-panel,
   .oracular-indicator-button {
     transition: none;
+  }
+
+  .oracular-workflow-guide {
+    animation: none;
   }
 }

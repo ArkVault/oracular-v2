@@ -1,9 +1,10 @@
 # Oracular V2
 
 Oracular V2 is a browser-based geospatial analysis demo for exploring Copernicus
-imagery and environmental indicators without requiring a desktop GIS. The
-application combines an interactive Leaflet map, Sentinel Hub WMS layers,
-acquisition-date discovery and point-level analysis in a responsive interface.
+imagery and environmental screening indicators without requiring a desktop GIS.
+The application combines an interactive Leaflet map, Sentinel Hub WMS layers,
+acquisition-date discovery, traceable evalscripts and point-level analysis in a
+responsive guided interface.
 
 The repository currently represents a technical demo. It is suitable for
 product validation and controlled testing, but it should not yet be treated as
@@ -11,18 +12,32 @@ a production scientific system.
 
 ## Current capabilities
 
-- Interactive satellite basemap built with Leaflet and React Leaflet.
-- Copernicus WMS visualization for natural color, chlorophyll-a, dissolved
-  oxygen, total suspended solids, turbidity and forest-fire layers.
+- Interactive satellite basemap built with Leaflet and React Leaflet, starting
+  at Ciudad del Carmen, Mexico.
+- Copernicus Sentinel-2 visualization for natural color, qualitative
+  chlorophyll-a, CDOM, turbidity, total suspended solids and forest-fire layers.
+- Sentinel-1 SAR screening views for potential marine oil-like dark returns and
+  positive-contrast Sargassum candidates.
 - Place search through a typed Nominatim adapter.
-- Acquisition calendar populated from Copernicus WFS metadata.
+- A dismissible workflow guide covering place search, acquisition date,
+  indicator selection and readiness.
+- Single-month acquisition calendar populated from Copernicus metadata, with
+  available imagery dates highlighted.
 - Strict cloud-coverage filtering: only acquisitions below 10 percent are
-  considered eligible.
+  considered eligible for Sentinel-2 views.
+- The actual image acquisition timestamp is displayed in every parameter view,
+  including Natural Color.
 - Point selection with coordinates, acquisition metadata, cloud coverage and
   provider result state in the right-side panel.
-- Parameter-specific legends with units, numeric ranges and color scales.
-- Color-based point estimation when a rendered pixel can be matched to the
-  configured parameter scale.
+- Parameter-specific legends, scientific citations and explicit implementation
+  limitations in the right-side panel.
+- Versioned WMS evalscripts for CDOM, turbidity, total suspended solids, oil-spill
+  screening and Sargassum screening under `sentinel-hub/evalscripts/`.
+- A latest-request-wins WMS policy that discards superseded indicator loads,
+  avoids offscreen analysis buffering and reveals a mosaic only when its current
+  tile grid is complete.
+- A blocking loader tied to the real WMS loading lifecycle rather than a fixed
+  visual delay.
 - Explicit out-of-area and no-data states when a point cannot be evaluated.
 - Polygon and rectangle drawing controls for defining an area of interest.
 - Responsive glass-panel interface for desktop and narrow viewports.
@@ -31,11 +46,13 @@ a production scientific system.
 
 ## How the demo works
 
-1. The user searches for a place or navigates directly on the map.
-2. The application loads a selected Copernicus visualization layer.
-3. The Dates control requests available Sentinel-2 acquisitions for the current
-   map bounds and filters them by cloud coverage.
-4. Selecting an acquisition updates the WMS time range used by the layer.
+1. The guide starts with place search or direct navigation on the map.
+2. The Dates control requests acquisitions for the current bounds and sensor,
+   then highlights the available dates for one month at a time.
+3. Selecting a date updates the WMS time range and acquisition badge.
+4. Selecting an indicator mounts only the newest requested WMS mosaic. The
+   workspace remains blocked until Leaflet confirms that all current tiles have
+   loaded, preventing partial or stale overlays.
 5. Clicking the map requests feature information for the selected parameter and
    displays the result, provenance and quality state in the analysis panel.
 
@@ -46,9 +63,11 @@ If Copernicus returns a scalar value, the application can present it with the
 configured unit and quality range. If the provider returns only RGB or rendered
 channels, Oracular V2 does not label those channels as a scientific measurement.
 
-Color-derived values are estimates based on the displayed scale. They are useful
-for interface and workflow validation, but they are not a replacement for a
-validated Copernicus Statistical API workflow or a calibrated analytical model.
+Oracular V2 does not invert rendered RGB channels into a concentration when the
+provider's scalar mapping is unavailable. Those views remain qualitative
+screening imagery until a versioned analytical output and local validation are
+available. They are not a replacement for a validated Copernicus Processing or
+Statistical API workflow.
 
 ## Architecture
 
@@ -65,6 +84,8 @@ src/
     analysis/                Measurement scales and WMS feature-info adapter
     place-search/            Search contract and Nominatim adapter
   shared/                    Shared presentation and infrastructure utilities
+sentinel-hub/
+  evalscripts/               Versioned per-request WMS visualization scripts
 ```
 
 Dependency rules:
@@ -101,13 +122,13 @@ context.
 
 | Area | Technology |
 |---|---|
-| Application | React 18, TypeScript, Vite |
+| Application | React 19, TypeScript, Vite |
 | Mapping | Leaflet, React Leaflet, Leaflet Draw |
 | Satellite data | Copernicus Data Space Ecosystem, Sentinel Hub WMS/WFS |
 | Interface | Tailwind CSS, shadcn conventions, Radix Slot, Lucide icons |
 | Dates | React DayPicker, date-fns |
 | Testing | Vitest, Testing Library, jsdom, V8 coverage |
-| Hosting | Vercel |
+| Hosting | Netlify |
 
 ## Local development
 
@@ -156,10 +177,9 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The latest verified local checkpoint contains 16 test suites
-and 70 tests. Coverage for the configured critical modules is 97.32 percent
-statements, 92.02 percent branches, 97.77 percent functions and 98.09 percent
-lines.
+production build. The latest verified local checkpoint contains 19 test files
+and 112 tests. Coverage for the configured modules is 98.67 percent statements,
+94.93 percent branches, 100 percent functions and 98.64 percent lines.
 
 Coverage thresholds currently apply to the configured domain and provider
 modules, not to the entire frontend. The localhost smoke test runs separately
@@ -184,22 +204,23 @@ Detailed strategy and results are available in
 ### Bundle strategy
 
 The production build uses feature-level lazy boundaries for optional tooling.
-The verified main JavaScript bundle decreased from 481.23 kB (144.67 kB gzip)
-to 364.85 kB (116.89 kB gzip), a reduction of 24.18 percent uncompressed and
-19.20 percent gzip. The calendar is emitted as a 72.76 kB chunk (19.28 kB gzip),
-while drawing is emitted as a 67.77 kB chunk (14.55 kB gzip) plus its deferred
-CSS. File hashes vary between builds; these measurements are a local baseline,
-not a permanent performance budget.
+The latest verified main JavaScript bundle is approximately 450.38 kB
+(140.41 kB gzip). Leaflet Draw remains deferred as a separate 67.78 kB chunk
+(14.55 kB gzip) plus its CSS. File hashes and exact sizes vary between builds;
+these measurements are a local checkpoint, not a permanent performance budget.
 
 ## Deployment
 
-The repository includes hardened Vercel configuration but intentionally excludes
-the Vercel CLI from the dependency tree. Deploy through Vercel's Git integration:
+The production target is [orber.app](https://orber.app), hosted by the Netlify
+site `orber-geospatial-demo-v3`. The versioned `netlify.toml` defines the build,
+publish directory, single-page application fallback and security headers.
 
-1. Connect `ArkVault/oracular-v2` to a Vercel project.
-2. Configure `main` as the production branch.
-3. Use `development` and pull requests for Preview deployments.
-4. Store private values only in Vercel's server-side environment configuration.
+1. Connect `ArkVault/oracular-v2` to the Netlify site.
+2. Configure `main` as the production branch and `npm run build` as the build
+   command.
+3. Publish the generated `dist/` directory.
+4. Use `development` and pull requests for Deploy Previews.
+5. Store private values only in Netlify's server-side environment configuration.
 
 Preview validation and production readiness are separate release gates. A
 successful local build does not by itself establish that OAuth, provider
@@ -210,8 +231,12 @@ configuration or public deployment behavior is production-ready.
 - Google authentication has not yet been implemented.
 - The current Copernicus configuration may return rendered channels instead of
   scalar scientific measurements for some parameters.
-- Color-based estimates depend on rendered imagery and should be treated as
-  approximate.
+- The configured remote CHLA layer does not expose its evalscript, formula or
+  calibration, so it remains a qualitative view and is not claimed to be
+  equivalent to the Ulyssys MCI implementation.
+- Per-pixel optical or SAR masks cannot guarantee continuous hydrographic or
+  coast-only topology without Sentinel-2 Level-2A classification or an external
+  water/ocean boundary.
 - Drawing is available, but the current KML export remains a placeholder and is
   not suitable for operational use.
 - Automated end-to-end coverage against live map providers is still pending.
@@ -226,15 +251,17 @@ The next planned product slices are:
    Statistical API integration.
 2. Add Google authentication behind a typed authentication contract.
 3. Extend acquisition selection with stable scene identity and richer metadata.
-4. Add end-to-end coverage for authentication, calendar and point analysis.
-5. Establish verified Vercel Preview and controlled production release gates.
+4. Add automated end-to-end coverage for authentication, calendar, WMS loading
+   and point analysis.
+5. Establish verified Netlify Deploy Preview and controlled production release
+   gates.
 
 The detailed sequence and acceptance criteria are maintained in the
 [Product roadmap](docs/product-roadmap.md).
 
 ## Security
 
-- Do not commit `.env`, tokens, provider credentials, private keys or Vercel
+- Do not commit `.env`, tokens, provider credentials, private keys or Netlify
   state.
 - Never place secrets in `VITE_` variables; Vite exposes them to the client.
 - Keep OAuth exchanges and privileged provider calls in managed server-side
