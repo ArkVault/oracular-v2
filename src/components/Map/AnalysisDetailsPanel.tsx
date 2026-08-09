@@ -1,4 +1,4 @@
-import { CalendarClock, X } from 'lucide-react';
+import { CalendarClock, Gauge, X } from 'lucide-react';
 
 import {
   createMeasurementGradient,
@@ -6,7 +6,9 @@ import {
 } from '@/features/analysis/domain/measurement-scale';
 
 import type { IndicatorDefinition } from './indicator-definitions';
+import { localizeIndicator } from './indicator-definitions';
 import { PointInfoSection, type PointInfoData } from './PointInfoSection';
+import { useI18n } from '@/i18n/i18n';
 
 interface AnalysisDetailsPanelProps {
   acquiredAt?: string;
@@ -23,28 +25,36 @@ export function AnalysisDetailsPanel({
   onClose,
   pointInfo,
 }: AnalysisDetailsPanelProps) {
+  const { language, locale, t } = useI18n();
+  const displayIndicator = localizeIndicator(indicator, language);
   const measurement =
     indicator.type === undefined
       ? getMeasurementDefinition(indicator.layer)
       : undefined;
 
   return (
-    <aside className="oracular-panel oracular-detail-panel" aria-label={`${indicator.name} details`}>
+    <aside className="oracular-panel oracular-detail-panel" aria-label={`${displayIndicator.name} details`}>
       <div className="oracular-panel__heading">
-        <h3>{indicator.name}</h3>
-        <button onClick={onClose} aria-label="Close details">
+        <h3>{displayIndicator.name}</h3>
+        <button onClick={onClose} aria-label={t('detail.close')}>
           <X />
         </button>
       </div>
-      <div className="oracular-acquisition-badge" aria-label="Image acquisition">
+      <div className="oracular-acquisition-badge" aria-label={t('detail.imageAcquisition')}>
         <CalendarClock aria-hidden="true" />
-        <span>Acquired</span>
+        <span>{t('detail.acquired')}</span>
         {acquiredAt ? (
-          <time dateTime={acquiredAt}>{formatAcquisitionTimestamp(acquiredAt)}</time>
+          <time dateTime={acquiredAt}>{formatAcquisitionTimestamp(acquiredAt, locale)}</time>
         ) : (
-          <span>Timestamp unavailable</span>
+          <span>{t('detail.noTimestamp')}</span>
         )}
       </div>
+      {indicator.type === 'natural' && (
+        <div className="oracular-demo-limit-badge">
+          <Gauge aria-hidden="true" />
+          <span>{t('limit.demoBadge')}</span>
+        </div>
+      )}
       {pointInfo && (
         <PointInfoSection
           info={pointInfo}
@@ -54,9 +64,9 @@ export function AnalysisDetailsPanel({
       <div className="oracular-layer-details">
         {indicator.type === 'discrete' ? (
           <div className="oracular-legend-card">
-            <div className="oracular-legend-label">Color classes</div>
+            <div className="oracular-legend-label">{t('detail.classes')}</div>
             <div className="oracular-discrete-legend">
-              {indicator.indicators.map((item, index) => (
+              {(displayIndicator.type === 'discrete' ? displayIndicator.indicators : indicator.indicators).map((item, index) => (
                 <div key={index} className="oracular-discrete-legend__item">
                   <span className={`oracular-discrete-legend__swatch ${item.color}`} />
                   <span>{item.label}</span>
@@ -86,9 +96,9 @@ export function AnalysisDetailsPanel({
           </div>
         ) : (
           <div className="oracular-legend-card">
-            <div className="oracular-legend-label">Calibrated measurement range unavailable</div>
+            <div className="oracular-legend-label">{t('detail.noRange')}</div>
             <p className="oracular-layer-description">
-              The configured provider palette and scientific value mapping are not available.
+              {t('detail.noPalette')}
             </p>
           </div>
         )}
@@ -96,18 +106,22 @@ export function AnalysisDetailsPanel({
           <div
             className="oracular-implementation-note"
             role="note"
-            aria-label="Oracular improved index implementation"
+            aria-label={indicator.type === 'natural'
+              ? t('detail.efficiency')
+              : t('detail.improved')}
           >
-            <span>Improved index implementation by Oracular</span>
-            <p>{indicator.implementationNote}</p>
+            <span>{indicator.type === 'natural'
+              ? t('detail.efficiency')
+              : t('detail.improved')}</span>
+            <p>{displayIndicator.implementationNote}</p>
           </div>
         )}
-        <p className="oracular-layer-description">{indicator.description}</p>
+        <p className="oracular-layer-description">{displayIndicator.description}</p>
         {(indicator.citation || indicator.additionalCitations?.length) && (
           <div className="oracular-citation">
             <span>{indicator.additionalCitations?.length
-              ? 'Scientific references'
-              : 'Scientific citation'}</span>
+              ? t('detail.references')
+              : t('detail.citation')}</span>
             {[...(indicator.citation ? [indicator.citation] : []),
               ...(indicator.additionalCitations ?? [])].map((citation) => (
               <a
@@ -122,7 +136,7 @@ export function AnalysisDetailsPanel({
           </div>
         )}
       </div>
-      <p className="oracular-reference">{indicator.quote}</p>
+      <p className="oracular-reference">{displayIndicator.quote}</p>
     </aside>
   );
 }
@@ -134,12 +148,16 @@ function formatMeasurementValue(value: number): string {
   }).format(value);
 }
 
-function formatAcquisitionTimestamp(acquiredAt: string): string {
-  const timestamp = new Date(acquiredAt);
-  const day = String(timestamp.getUTCDate()).padStart(2, '0');
-  const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][timestamp.getUTCMonth()];
-  const time = timestamp.toISOString().slice(11, 19);
-
-  return `${day} ${month} ${timestamp.getUTCFullYear()} · ${time} UTC`;
+function formatAcquisitionTimestamp(acquiredAt: string, locale: string): string {
+  if (locale === 'en-US') {
+    const timestamp = new Date(acquiredAt);
+    const day = String(timestamp.getUTCDate()).padStart(2, '0');
+    const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][timestamp.getUTCMonth()];
+    return `${day} ${month} ${timestamp.getUTCFullYear()} · ${timestamp.toISOString().slice(11, 19)} UTC`;
+  }
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit', hour: '2-digit', hour12: false, minute: '2-digit',
+    month: 'short', second: '2-digit', timeZone: 'UTC', timeZoneName: 'short', year: 'numeric',
+  }).format(new Date(acquiredAt));
 }

@@ -164,7 +164,7 @@ describe('CopernicusWmsFeatureInfoProvider', () => {
       valueSource: 'unavailable',
       isEstimate: false,
       acquisitionId: 'S2C_MSIL1C_SCENE',
-      message: 'Calibrated concentration unavailable. The selected layer returns rendered color channels, but its scientific value-to-color mapping is not available.',
+      message: 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.',
     });
     expect(result.isOutOfArea).toBeUndefined();
   });

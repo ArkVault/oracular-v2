@@ -52,3 +52,5 @@ oauth-token*.json
 # Task files
 tasks.json
 tasks/
+.vercel
+.env*.local

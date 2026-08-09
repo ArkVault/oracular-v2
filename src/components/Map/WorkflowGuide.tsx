@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { ArrowLeft, CalendarDays, Check, CircleCheck, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useI18n, type TranslationKey } from '@/i18n/i18n';
 
 export type WorkflowGuideStep = 'search' | 'dates' | 'indicators' | 'ready';
 
@@ -14,31 +15,20 @@ interface WorkflowGuideProps {
 
 const STEPS = {
   search: {
-    eyebrow: 'Step 1 of 4',
-    title: 'Search for a place',
-    description: 'Find and select the coast, lake, city, or landscape you want to analyze.',
-    action: 'Open Search',
+    eyebrow: 'guide.step1', title: 'guide.searchTitle', description: 'guide.searchDescription', action: 'guide.openSearch',
     icon: Search,
   },
   dates: {
-    eyebrow: 'Step 2 of 4',
-    title: 'Choose an acquisition date',
-    description: 'Open Dates and select a highlighted day with available satellite imagery.',
-    action: 'Open Dates',
+    eyebrow: 'guide.step2', title: 'guide.dateTitle', description: 'guide.dateDescription', action: 'guide.openDates',
     icon: CalendarDays,
   },
   indicators: {
-    eyebrow: 'Step 3 of 4',
-    title: 'Choose an indicator',
-    description: 'Select an analysis from the left panel. We will confirm when the layer is ready.',
+    eyebrow: 'guide.step3', title: 'guide.indicatorTitle', description: 'guide.indicatorDescription',
     action: null,
     icon: SlidersHorizontal,
   },
   ready: {
-    eyebrow: 'Step 4 of 4',
-    title: 'Ready to go',
-    description: 'Your indicator is applied. Explore the map or click any water body to inspect the result.',
-    action: 'Ready to go',
+    eyebrow: 'guide.step4', title: 'guide.readyTitle', description: 'guide.readyDescription', action: 'guide.ready',
     icon: CircleCheck,
   },
 } as const;
@@ -68,6 +58,7 @@ export function WorkflowGuide({
   onOpenSearch,
   step,
 }: WorkflowGuideProps) {
+  const { t } = useI18n();
   const guideRef = React.useRef<HTMLElement>(null);
   const [spotlightRect, setSpotlightRect] = React.useState<SpotlightRect>();
   const maskId = `workflow-mask-${React.useId().replace(/:/g, '')}`;
@@ -172,35 +163,35 @@ export function WorkflowGuide({
           >
             <span>
               {stepIndex + 1} · {step === 'search'
-                ? 'Search'
+                ? t('guide.search')
                 : step === 'dates'
-                  ? 'Dates'
+                  ? t('guide.dates')
                   : step === 'indicators'
-                    ? 'Indicators'
-                    : 'Ready'}
+                    ? t('guide.indicators')
+                    : t('guide.readyShort')}
             </span>
           </div>
         )}
       </div>
-      <section ref={guideRef} className="oracular-workflow-guide" role="dialog" aria-label="Workflow guide">
+      <section ref={guideRef} className="oracular-workflow-guide" role="dialog" aria-label={t('guide.label')}>
       <div className="oracular-workflow-guide__icon" aria-hidden="true">
         <Icon />
       </div>
       <div className="oracular-workflow-guide__content">
         <div className="oracular-workflow-guide__meta">
-          <span>{content.eyebrow}</span>
+          <span>{t(content.eyebrow as TranslationKey)}</span>
           <div className="oracular-workflow-guide__progress" aria-hidden="true">
             {[0, 1, 2, 3].map((index) => (
               <span key={index} className={index <= stepIndex ? 'is-active' : ''} />
             ))}
           </div>
         </div>
-        <h2>{content.title}</h2>
-        <p>{content.description}</p>
+        <h2>{t(content.title as TranslationKey)}</h2>
+        <p>{t(content.description as TranslationKey)}</p>
       </div>
       <div className="oracular-workflow-guide__actions">
         {step !== 'search' && (
-          <button type="button" className="oracular-workflow-guide__back" onClick={onBack} aria-label="Previous step">
+          <button type="button" className="oracular-workflow-guide__back" onClick={onBack} aria-label={t('guide.previous')}>
             <ArrowLeft />
           </button>
         )}
@@ -210,11 +201,11 @@ export function WorkflowGuide({
             className="oracular-workflow-guide__primary"
             onClick={step === 'search' ? onOpenSearch : step === 'dates' ? onOpenDates : onComplete}
           >
-            {content.action}
+            {t(content.action as TranslationKey)}
             {step === 'ready' && <Check aria-hidden="true" />}
           </button>
         )}
-        <button type="button" className="oracular-workflow-guide__close" onClick={onDismiss} aria-label="Dismiss workflow guide">
+        <button type="button" className="oracular-workflow-guide__close" onClick={onDismiss} aria-label={t('guide.dismiss')}>
           <X />
         </button>
       </div>
