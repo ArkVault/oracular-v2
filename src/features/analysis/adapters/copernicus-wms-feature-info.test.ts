@@ -142,7 +142,7 @@ describe('CopernicusWmsFeatureInfoProvider', () => {
   it.each([
     ['colored', ['0.80635', '0.760724', '0.607419']],
     ['black', ['0', '0', '0']],
-  ])('should keep an uncalibrated %s RGB response unavailable and inside the footprint', async (_label, channels) => {
+  ])('should keep a rendered %s MCI response unavailable as a point scalar', async (_label, channels) => {
     // ARRANGE
     const fetcher = vi.fn().mockResolvedValue(featureResponse({
       id: 'S2C_MSIL1C_SCENE',
@@ -164,7 +164,7 @@ describe('CopernicusWmsFeatureInfoProvider', () => {
       valueSource: 'unavailable',
       isEstimate: false,
       acquisitionId: 'S2C_MSIL1C_SCENE',
-      message: 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.',
+      message: 'The visualization has a documented qualitative index palette, but this point response contains rendered color channels rather than the underlying scalar MCI value. It must not be interpreted as chlorophyll-a concentration.',
     });
     expect(result.isOutOfArea).toBeUndefined();
   });
