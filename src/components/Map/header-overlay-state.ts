@@ -1,9 +1,10 @@
-export type HeaderOverlay = 'dates' | 'sensors' | 'search' | null;
+export type HeaderOverlay = 'account' | 'dates' | 'sensors' | 'search' | null;
 
 type VisibleHeaderOverlay = Exclude<HeaderOverlay, null>;
 
 export type HeaderOverlayAction =
   | { type: 'toggle'; overlay: VisibleHeaderOverlay }
+  | { type: 'open'; overlay: VisibleHeaderOverlay }
   | { type: 'close'; overlay?: VisibleHeaderOverlay };
 
 export function headerOverlayReducer(
@@ -12,6 +13,10 @@ export function headerOverlayReducer(
 ): HeaderOverlay {
   if (action.type === 'toggle') {
     return state === action.overlay ? null : action.overlay;
+  }
+
+  if (action.type === 'open') {
+    return action.overlay;
   }
 
   if (action.overlay && state !== action.overlay) {

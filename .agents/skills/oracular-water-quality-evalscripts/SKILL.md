@@ -1,6 +1,6 @@
 ---
 name: oracular-water-quality-evalscripts
-description: Improve, review, or debug Oracular Sentinel-2 water-quality evalscripts and their map UI. Use for MAGO NDCI, CDOM, Turbidity, or TSS formulas; water/cloud/urban masking; calibrated palettes and measurement scales; acquisition metadata and citations; false-positive or incomplete-water-body diagnosis; and real Copernicus WMS validation.
+description: Improve, review, or debug Oracular Sentinel-2 water-quality evalscripts and their map UI. Use for MAGO NDCI, CDOM, Turbidity, or TSS formulas; water/cloud/urban masking; calibrated palettes and measurement scales; acquisition metadata and citations; false-positive or incomplete-water-body diagnosis; efficient latest-request-only WMS tile loading; and real Copernicus WMS validation.
 ---
 
 # Oracular Water Quality Evalscripts
@@ -42,6 +42,20 @@ Treat the scientific estimate, the water mask, and the visualization as separate
 - Keep the published `0.10–15.89 NTU` calibration domain and the orange→yellow→violet→purple palette.
 - Clamp finite display values to that domain instead of reclassifying confirmed water as land. If confirmed water has `B02=0`, render the upper endpoint and disclose that the ratio is undefined rather than reporting a precise value.
 - Preserve cloud and urban/soil rejection even when a more permissive mask visually increases coverage. Prefer migration to L2A or hydrographic geometry over scientifically indefensible thresholds.
+
+## Efficient WMS loading policy
+
+Treat each indicator/date/time selection as one logical mosaic even though Leaflet must request several viewport tiles. Apply a strict **latest request wins** policy:
+
+- Cancel any pending selection delay, debounce, fetch, or analysis request when a newer selection supersedes it. Use `AbortController` where the API supports cancellation.
+- Immediately unmount the active analysis `WMSTileLayer` when its indicator, date, time, or evalscript changes. Never retain an old `selectedLayer` while pairing it with the new indicator render configuration.
+- Identify a request with an immutable key containing the source layer, rendered layer, acquisition date, tile time, and evalscript revision or hash when applicable. Allow only the matching latest key to commit ready state.
+- Set analysis overlays to `keepBuffer={0}` unless measured navigation performance proves that buffering is necessary. Keep ordinary basemap buffering independent.
+- Hide a new analysis layer with `opacity={0}` while its tile grid emits `loading`; reveal it only after the matching Leaflet `load` event confirms that the current grid is complete. This prevents partially painted mosaics.
+- Removing a Leaflet layer may not stop every already-started HTTP transfer, but it must detach its tiles and make stale callbacks unable to update visible state.
+- Do not interpret “only the latest tile” as requesting one 256×256 tile for the whole map. Preserve all tiles required to cover the viewport; eliminate obsolete mosaics and offscreen analysis buffers.
+
+Add a regression test that starts one indicator load, supersedes it with another before completion, and proves that the earlier layer never mounts. Also test that the latest layer stays hidden until its own `load` event and that rapid changes cannot combine a previous source layer with a new evalscript.
 
 ## Validation evidence
 

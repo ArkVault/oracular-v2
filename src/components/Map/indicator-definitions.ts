@@ -1,10 +1,11 @@
 import {
-  Droplets,
-  Eye,
+  Droplet,
+  FlaskConical,
   Flame,
   Gauge,
   Leaf,
-  Waves,
+  Satellite,
+  Sprout,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ import magoTssEvalscript from '../../../sentinel-hub/evalscripts/mago-water-qual
 import oilSpillSarEvalscript from '../../../sentinel-hub/evalscripts/oil-spill-sar-screening.js?raw';
 import sargassumSarEvalscript from '../../../sentinel-hub/evalscripts/sargassum-sar-screening.js?raw';
 import type { AcquisitionCollection } from '@/features/acquisitions/ports/acquisition-date-provider';
+import type { Language } from '@/i18n/i18n';
 
 interface IndicatorBase {
   acquisitionCollection?: AcquisitionCollection;
@@ -57,6 +59,63 @@ export type IndicatorDefinition =
   | DiscreteIndicator
   | ContinuousIndicator;
 
+const SPANISH_INDICATORS: Record<string, Partial<IndicatorDefinition>> = {
+  'Natural Color': {
+    name: 'Color Natural',
+    description: 'Imagen satelital en colores naturales, similar a como la superficie terrestre se ve al ojo humano. Ayuda a reconocer vegetación, agua y rasgos del terreno.',
+    quote: 'Referencia: Agencia Espacial Europea. (2015). Sentinel-2 User Handbook (Issue 1, Revision 2).',
+  },
+  'Chlorophyll-a': {
+    name: 'Clorofila-a',
+    description: 'La capa CHLA configurada se conserva como una vista cualitativa de patrones posiblemente relacionados con clorofila-a. No debe interpretarse como concentración hasta contar con el evalscript, bandas, preprocesamiento, coeficientes, paleta, dominio de calibración y validación local del proveedor.',
+    implementationNote: 'Frente al referente Ulyssys, Oracular no afirma equivalencia MCI ni concentración calibrada porque el evalscript remoto no está expuesto. Las mejoras son trazabilidad y seguridad de entrega: sin escalas inventadas ni inversión RGB, con fecha de adquisición, carga exclusiva de la última solicitud y revelado atómico del mosaico.',
+    quote: 'Revisión de cumplimiento científico: Ulyssys es un referente MCI cualitativo para Sentinel-2. El método CHLA del proveedor no está publicado; su equivalencia algorítmica y sus valores cuantitativos no están verificados.',
+  },
+  'Water Quality': {
+    name: 'Calidad del agua',
+    description: 'El índice 0 de MAGO estima clorofila-a superficial con reflectancia roja y borde rojo de Sentinel-2 mediante NDCI. Primero rechaza nubes, tierra, zonas urbanas y suelo desnudo; después aplica la fórmula sólo a píxeles de agua aceptados en el dominio visual de 0–30 mg/m³.',
+    implementationNote: 'Se conservan la fórmula del índice 0 y su paleta. El flujo original Level-2A se adaptó a la capa WMS Level-1C disponible mediante un filtro en dos etapas: CLM y máscara espectral de agua, seguidos por NDCI y validación de dominio.',
+  },
+  Turbidity: {
+    name: 'Turbidez',
+    description: 'El índice 5 de MAGO estima turbidez superficial con B05 y B02. La escala naranja–amarillo–violeta–morado cubre el dominio publicado de 0.10–15.89 NTU y se aplica a agua clara identificada en ríos, lagos, lagunas y costa; nubes, ciudad y suelo se oscurecen.',
+    implementationNote: 'Oracular conserva la paleta anterior y usa el dominio validado de Zhan et al. La máscara combina señales de agua, filtros urbano/suelo y nube. Los valores de agua fuera del dominio se saturan al extremo más cercano. Esta adaptación Level-1C es de exploración y requiere validación local in situ.',
+  },
+  CDOM: {
+    description: 'El índice 6 de MAGO estima materia orgánica disuelta coloreada mediante la razón B04/B02. Una máscara CLM/WBM oscurece nubes y superficies no acuáticas antes de aplicar el dominio publicado de 0.03–5.30 µg/L QSE.',
+    implementationNote: 'Oracular aplica la máscara compartida antes de la fórmula de Sòria-Perpinyà et al. y rechaza estimaciones fuera del dominio. Esta adaptación Level-1C es una visualización de exploración y necesita corrección atmosférica acuática y validación local.',
+  },
+  'Total Suspended Solids': {
+    name: 'Sólidos Suspendidos Totales',
+    description: 'El índice 7 de MAGO estima sólidos suspendidos totales mediante B07/B02. La máscara compartida oscurece nubes y superficies no acuáticas; después se restringe a razón > 0.8 y al dominio publicado de 20.00–78.82 mg/L.',
+    implementationNote: 'Oracular conserva la visualización azul–cian–verde–amarillo–rojo, aplicada sólo después de la máscara de agua y las comprobaciones de validez. Esta adaptación Level-1C requiere corrección atmosférica acuática y validación local.',
+  },
+  'Forest Fire Detection': {
+    name: 'Detección de Incendios Forestales',
+    description: 'Monitoreo satelital de incendios forestales. El rojo indica fuegos activos y el amarillo zonas quemadas recientemente; sirve como apoyo para respuesta de emergencia y manejo forestal.',
+    indicators: [{ color: 'bg-red-600', label: 'Incendios activos' }, { color: 'bg-yellow-500', label: 'Áreas quemadas' }],
+  },
+  'Oil Spill Detection': {
+    name: 'Detección de Derrames de Petróleo',
+    description: 'Exploración Sentinel-1 GRD VV/VH de retornos oscuros compatibles con hidrocarburos en mar abierto y costa. El rojo marca candidatos para revisión, no petróleo confirmado.',
+    implementationNote: 'Oracular convierte VV/VH calibrados a decibeles, aplica límites publicados de agua permanente y después evalúa retornos oscuros. El umbral es una línea base de exploración: viento bajo, películas biogénicas, lluvia, sombras y artefactos pueden parecerse a un derrame. Toda alerta exige confirmación contextual.',
+    quote: 'Retornos SAR oscuros potencialmente compatibles con petróleo. Se requiere confirmación operativa antes de reportar un derrame.',
+    indicators: [{ color: 'bg-red-500', label: 'Retorno oscuro potencialmente compatible con petróleo' }, { color: 'bg-sky-800', label: 'Fondo acuático SAR' }],
+  },
+  'Sargassum Detection': {
+    name: 'Detección de Sargazo',
+    description: 'Exploración Sentinel-1 GRD VV/VH de macroalgas flotantes con contraste radar positivo en agua marina y costera. Los candidatos aparecen de dorado a fucsia sobre fondo oscuro.',
+    implementationNote: 'Oracular usa VV/VH calibrados y márgenes conservadores para reducir falsos positivos terrestres. Sentinel-1 por sí solo no distingue topológicamente río y mar; garantizar operación sólo costera requiere un polígono oceánico externo y procesamiento de servidor. Barcos, plataformas, oleaje y frentes pueden producir falsos positivos.',
+    quote: 'Retornos potenciales de macroalgas flotantes. Todo candidato requiere confirmación independiente.',
+    indicators: [{ color: 'bg-fuchsia-400', label: 'Posible balsa de sargazo con contraste positivo' }, { color: 'bg-cyan-950', label: 'Fondo marino SAR' }],
+  },
+};
+
+export function localizeIndicator(indicator: IndicatorDefinition, language: Language): IndicatorDefinition {
+  if (language === 'en') return indicator;
+  return { ...indicator, ...SPANISH_INDICATORS[indicator.name] } as IndicatorDefinition;
+}
+
 export interface WaterQualityIndexOption {
   index: number;
   label: string;
@@ -66,7 +125,7 @@ export interface WaterQualityIndexOption {
 
 export const WATER_QUALITY_INDICATOR: ContinuousIndicator = {
   name: 'Water Quality',
-  icon: Gauge,
+  icon: FlaskConical,
   layer: 'WATER-QUALITY',
   render: {
     layer: 'CHLA',
@@ -133,7 +192,6 @@ export const WATER_QUALITY_TSS_INDICATOR: ContinuousIndicator = {
 };
 
 export const WATER_QUALITY_INDEX_OPTIONS: WaterQualityIndexOption[] = [
-  { index: 0, label: 'Chlorophyll-a (NDCI)', unit: 'mg/m³', indicator: WATER_QUALITY_INDICATOR },
   { index: 6, label: 'CDOM', unit: 'µg/L QSE', indicator: WATER_QUALITY_CDOM_INDICATOR },
   { index: 5, label: 'Turbidity', unit: 'NTU', indicator: WATER_QUALITY_TURBIDITY_INDICATOR },
   { index: 7, label: 'Total Suspended Solids', unit: 'mg/L', indicator: WATER_QUALITY_TSS_INDICATOR },
@@ -143,16 +201,25 @@ export const INDICATORS: IndicatorDefinition[] = [
   {
     name: 'Natural Color',
     type: 'natural',
-    icon: Eye,
+    icon: Satellite,
     description: 'Natural satellite imagery showing Earth as it appears to the human eye. This view helps identify surface features, vegetation patterns, and water bodies in their true colors using cloud-free imagery for optimal visibility.',
     quote: 'Reference: European Space Agency. (2015). Sentinel-2 User Handbook (Issue 1, Revision 2).',
   },
   {
     name: 'Chlorophyll-a',
-    icon: Droplets,
+    icon: Sprout,
     layer: 'CHLA',
-    description: 'Chlorophyll-a is the primary photosynthetic pigment found in all plants and algae. High concentrations in water bodies indicate algal blooms, which can affect water quality and ecosystem health. Regular monitoring helps identify potential eutrophication issues and assess the overall health of aquatic ecosystems.',
-    quote: 'Scientific method unavailable: the configured CHLA evalscript, bands, coefficients, and calibration have not been supplied.',
+    description: 'The configured CHLA layer is retained as a qualitative screening view of spatial patterns potentially related to chlorophyll-a. It must not be interpreted as a concentration map until the provider supplies its evalscript, input bands, preprocessing level, coefficients, palette mapping, calibration domain, and local validation evidence.',
+    implementationNote: 'Compared with the published Ulyssys benchmark, Oracular does not claim MCI equivalence or calibrated chlorophyll-a concentration because the remote CHLA evalscript is not exposed. Oracular improvements are therefore traceability and delivery safeguards: no fabricated numeric scale, no inversion of rendered RGB into point concentrations, an acquisition timestamp, latest-request-only WMS loading, and atomic reveal of the completed tile mosaic. These improve scientific honesty and map reliability, not the undisclosed spectral algorithm.',
+    quote: 'Scientific compliance review — Ulyssys is a qualitative MCI benchmark for Sentinel-2, using B05 relative to a B04–B06 baseline and a default −0.005 to 0.05 display interval. The configured provider CHLA method is undisclosed, so algorithmic equivalence and quantitative values remain unverified.',
+    citation: {
+      label: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
+      href: 'https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/ulyssys_water_quality_viewer/',
+    },
+    additionalCitations: [{
+      label: 'Ulyssys technical description supplementary',
+      href: 'https://doi.org/10.20944/preprints202001.0386.v1',
+    }],
   },
   WATER_QUALITY_INDICATOR,
   {
@@ -169,7 +236,7 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     name: 'Oil Spill Detection',
-    icon: Waves,
+    icon: Droplet,
     type: 'discrete',
     layer: 'OIL-SPILL-SAR',
     acquisitionCollection: 'sentinel-1',
