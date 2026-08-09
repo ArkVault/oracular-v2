@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { Activity, Bell, Calendar, Search, UserRound, X } from 'lucide-react';
+import { Activity, Bell, Calendar, ListChecks, Search, UserRound, X } from 'lucide-react';
 
 import { Button } from '@/components/UI/button';
 import { Card } from '@/components/UI/card';
 import { localDateToAcquisitionDate } from '@/features/acquisitions/domain/acquisition-date';
 import type { PlaceSearchResult } from '@/features/place-search/domain/place';
+import { useI18n } from '@/i18n/i18n';
 
 import { AcquisitionCalendar } from './AcquisitionCalendar';
 import { headerOverlayReducer } from './header-overlay-state';
@@ -33,10 +34,23 @@ interface PlaceSearchMenuProps {
 
 interface MapHeaderProps {
   acquisitions: AcquisitionDateMenuProps;
+  openDatePickerSignal: number;
+  openSearchSignal: number;
   placeSearch: PlaceSearchMenuProps;
+  workflowGuide: {
+    enabled: boolean;
+    onToggle: () => void;
+  };
 }
 
-export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
+export function MapHeader({
+  acquisitions,
+  openDatePickerSignal,
+  openSearchSignal,
+  placeSearch,
+  workflowGuide,
+}: MapHeaderProps) {
+  const { language, setLanguage, t } = useI18n();
   const [activeOverlay, dispatchOverlay] = React.useReducer(
     headerOverlayReducer,
     null,
@@ -44,6 +58,11 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
   const showDatePicker = activeOverlay === 'dates';
   const showSensorMenu = activeOverlay === 'sensors';
   const showSearch = activeOverlay === 'search';
+  const showDeveloperAccess = activeOverlay === 'account';
+  const [developerPassphrase, setDeveloperPassphrase] = React.useState('');
+  const [developerAuthenticated, setDeveloperAuthenticated] = React.useState(false);
+  const [developerError, setDeveloperError] = React.useState(false);
+  const loadAcquisitionDates = acquisitions.onLoad;
 
   const toggleDatePicker = () => {
     if (!showDatePicker) {
@@ -61,6 +80,17 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
   };
 
   React.useEffect(() => {
+    if (openDatePickerSignal === 0) return;
+    void loadAcquisitionDates();
+    dispatchOverlay({ type: 'open', overlay: 'dates' });
+  }, [loadAcquisitionDates, openDatePickerSignal]);
+
+  React.useEffect(() => {
+    if (openSearchSignal === 0) return;
+    dispatchOverlay({ type: 'open', overlay: 'search' });
+  }, [openSearchSignal]);
+
+  React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.date-picker-container') && !target.closest('.date-button')) {
@@ -68,6 +98,9 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
       }
       if (!target.closest('.sensor-menu-container') && !target.closest('.sensor-button')) {
         dispatchOverlay({ type: 'close', overlay: 'sensors' });
+      }
+      if (!target.closest('.oracular-account-wrap')) {
+        dispatchOverlay({ type: 'close', overlay: 'account' });
       }
     };
 
@@ -80,8 +113,37 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
     dispatchOverlay({ type: 'close', overlay: 'search' });
   };
 
+  React.useEffect(() => {
+    if (!showDeveloperAccess) return;
+    void fetch('/api/developer-session', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : { authenticated: false })
+      .then((payload: { authenticated?: boolean }) => setDeveloperAuthenticated(payload.authenticated === true))
+      .catch(() => undefined);
+  }, [showDeveloperAccess]);
+
+  const submitDeveloperAccess = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setDeveloperError(false);
+    const response = await fetch('/api/developer-session', {
+      body: JSON.stringify({ passphrase: developerPassphrase }),
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    }).catch(() => undefined);
+    if (!response?.ok) { setDeveloperError(true); return; }
+    setDeveloperAuthenticated(true);
+    setDeveloperPassphrase('');
+    dispatchOverlay({ type: 'close', overlay: 'account' });
+  };
+
+  const endDeveloperAccess = async () => {
+    await fetch('/api/developer-session', { credentials: 'same-origin', method: 'DELETE' }).catch(() => undefined);
+    setDeveloperAuthenticated(false);
+    dispatchOverlay({ type: 'close', overlay: 'account' });
+  };
+
   return (
-    <nav className="oracular-header" aria-label="Primary navigation">
+    <nav className="oracular-header" aria-label={t('nav.primary')}>
       <div className="oracular-brand">
         <div className="oracular-brand__mark" aria-hidden="true">
           <span />
@@ -97,7 +159,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           onClick={toggleDatePicker}
           aria-expanded={showDatePicker}
         >
-          <Calendar /> <span>Dates</span>
+          <Calendar /> <span>{t('nav.dates')}</span>
         </Button>
         <Button
           type="button"
@@ -106,23 +168,33 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           onClick={toggleSensorMenu}
           aria-expanded={showSensorMenu}
         >
-          <Activity /> <span>Sensors</span>
+          <Activity /> <span>{t('nav.sensors')}</span>
         </Button>
 
         {showDatePicker && (
-          <Card
-            className="date-picker-container oracular-popover oracular-popover--calendar"
-            role="dialog"
-            aria-label="Available acquisition dates"
-          >
-            <div className="oracular-popover__eyebrow">Copernicus imagery</div>
-            <h2>Select acquisition date</h2>
+          <>
+            <div
+              className="oracular-calendar-backdrop"
+              data-testid="calendar-backdrop"
+              aria-hidden="true"
+            />
+            <Card
+              className="date-picker-container oracular-popover oracular-popover--calendar"
+              role="dialog"
+              aria-label="Available acquisition dates"
+            >
+            <div className="oracular-popover__eyebrow">{t('calendar.eyebrow')}</div>
+            <h2>{t('calendar.title')}</h2>
             <AcquisitionCalendar
               selected={acquisitions.selectedCalendarDate}
               onSelect={(date) => {
+                const selectedDate = date ?? acquisitions.selectedCalendarDate;
                 acquisitions.onSelectDate(
-                  date ? localDateToAcquisitionDate(date) : undefined,
+                  selectedDate ? localDateToAcquisitionDate(selectedDate) : undefined,
                 );
+                if (selectedDate) {
+                  dispatchOverlay({ type: 'close', overlay: 'dates' });
+                }
               }}
               month={acquisitions.calendarMonth}
               onMonthChange={acquisitions.onMonthChange}
@@ -133,16 +205,23 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               modifiers={{ available: acquisitions.availableCalendarDates }}
               modifiersClassNames={{ available: 'rdp-day_available' }}
             />
+            {acquisitions.availableDates.length > 0 && !acquisitions.isLoading && (
+              <div className="oracular-calendar-key">
+                <span aria-hidden="true" />
+                {t('calendar.available')}
+              </div>
+            )}
             <div className="oracular-calendar-status" aria-live="polite">
               {acquisitions.isLoading
-                ? 'Loading available Copernicus dates…'
+                ? t('calendar.loading')
                 : acquisitions.error
                   ? acquisitions.error
                   : acquisitions.availableDates.length === 0
-                    ? 'No cloud-safe acquisitions in the last 12 months.'
-                    : `${acquisitions.availableDates.length} cloud-safe acquisitions`}
+                    ? t('calendar.empty')
+                    : t('calendar.count', { count: acquisitions.availableDates.length })}
             </div>
-          </Card>
+            </Card>
+          </>
         )}
 
         {showSensorMenu && (
@@ -151,16 +230,16 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
             role="dialog"
             aria-label="Available sensors"
           >
-            <div className="oracular-popover__eyebrow">Data sources</div>
-            <h2>Available sensors</h2>
+            <div className="oracular-popover__eyebrow">{t('sensors.eyebrow')}</div>
+            <h2>{t('sensors.title')}</h2>
             <div className="oracular-sensor-list">
               <button className="is-selected">
                 <span className="oracular-sensor-dot" />
-                <span><strong>Sentinel-2</strong><small>Active · multispectral</small></span>
+                <span><strong>Sentinel-2</strong><small>{t('sensors.active')}</small></span>
               </button>
               <button disabled>
                 <span className="oracular-sensor-dot" />
-                <span><strong>PlanetScope</strong><small>Coming soon</small></span>
+                <span><strong>PlanetScope</strong><small>{t('sensors.soon')}</small></span>
               </button>
             </div>
           </Card>
@@ -168,6 +247,18 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
       </div>
 
       <div className="oracular-header__actions">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={workflowGuide.onToggle}
+          className={`oracular-guide-toggle ${workflowGuide.enabled ? 'is-active' : ''}`}
+          aria-label={workflowGuide.enabled ? t('nav.guideOff') : t('nav.guideOn')}
+          aria-pressed={workflowGuide.enabled}
+        >
+          <ListChecks />
+          <span>{t('nav.guide')}</span>
+          <i aria-hidden="true" />
+        </Button>
         <div className="oracular-search-wrap">
           <Button
             type="button"
@@ -175,7 +266,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
             size="icon"
             onClick={toggleSearch}
             className={`oracular-icon-button ${showSearch ? 'is-active' : ''}`}
-            aria-label="Search"
+            aria-label={t('nav.search')}
             aria-expanded={showSearch}
           >
             <Search />
@@ -190,7 +281,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
                   maxLength={200}
                   value={placeSearch.query}
                   onChange={(event) => placeSearch.onSearch(event.target.value)}
-                  placeholder="Search places..."
+                  placeholder={t('search.placeholder')}
                   className="oracular-search-input"
                 />
                 {placeSearch.query && (
@@ -200,7 +291,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
                     size="icon"
                     onClick={placeSearch.onClear}
                     className="oracular-search-clear"
-                    aria-label="Clear search"
+                    aria-label={t('search.clear')}
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -208,7 +299,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               </div>
 
               {placeSearch.isSearching && (
-                <div className="text-center text-gray-400 py-2">Searching...</div>
+                <div className="text-center text-gray-400 py-2">{t('search.loading')}</div>
               )}
 
               {!placeSearch.isSearching && placeSearch.results.length > 0 && (
@@ -228,7 +319,7 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
               {!placeSearch.isSearching &&
                 placeSearch.query.length >= 3 &&
                 placeSearch.results.length === 0 && (
-                  <div className="text-center text-gray-400 py-2">No results found</div>
+                  <div className="text-center text-gray-400 py-2">{t('search.empty')}</div>
                 )}
             </Card>
           )}
@@ -239,19 +330,49 @@ export function MapHeader({ acquisitions, placeSearch }: MapHeaderProps) {
           variant="ghost"
           size="icon"
           className="oracular-icon-button"
-          aria-label="Notifications"
+          aria-label={t('nav.notifications')}
         >
           <Bell />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="oracular-user"
-          aria-label="Account"
-        >
-          <UserRound />
-        </Button>
+        <div className="oracular-language-switch" role="group" aria-label={t('language.label')}>
+          <button className={language === 'es' ? 'is-active' : ''} onClick={() => setLanguage('es')} type="button">ES</button>
+          <button className={language === 'en' ? 'is-active' : ''} onClick={() => setLanguage('en')} type="button">EN</button>
+        </div>
+        <div className="oracular-account-wrap">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={`oracular-user account-button ${showDeveloperAccess ? 'is-active' : ''}`}
+            aria-label={t('nav.account')}
+            aria-expanded={showDeveloperAccess}
+            aria-pressed={developerAuthenticated}
+            onClick={() => dispatchOverlay({ type: 'toggle', overlay: 'account' })}
+          >
+            <UserRound />
+          </Button>
+          {showDeveloperAccess && (
+            <Card className="oracular-popover oracular-developer-popover" role="dialog" aria-label={t('access.title')}>
+              <button className="oracular-developer-dialog__close" onClick={() => dispatchOverlay({ type: 'close', overlay: 'account' })} aria-label={t('access.close')}><X /></button>
+              <div className="oracular-popover__eyebrow">Oracular</div>
+              <h2>{t('access.title')}</h2>
+              {developerAuthenticated ? (
+                <div className="oracular-developer-authenticated">
+                  <p className="oracular-developer-status">{t('access.active')}</p>
+                  <button type="button" className="oracular-developer-submit" onClick={endDeveloperAccess}>{t('access.signOut')}</button>
+                </div>
+              ) : (
+                <form onSubmit={submitDeveloperAccess}>
+                  <p>{t('access.description')}</p>
+                  <label htmlFor="developer-passphrase">{t('access.passphrase')}</label>
+                  <input id="developer-passphrase" type="password" autoComplete="current-password" value={developerPassphrase} onChange={(event) => setDeveloperPassphrase(event.target.value)} required />
+                  {developerError && <p className="oracular-developer-error" role="alert">{t('access.invalid')}</p>}
+                  <button type="submit" className="oracular-developer-submit">{t('access.signIn')}</button>
+                </form>
+              )}
+            </Card>
+          )}
+        </div>
       </div>
     </nav>
   );

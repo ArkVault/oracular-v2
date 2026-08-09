@@ -31,7 +31,8 @@ body,
 }
 
 body {
-  font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-optical-sizing: auto;
 }
 
 .leaflet-container {

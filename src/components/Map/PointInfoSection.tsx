@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useI18n } from '@/i18n/i18n';
 
 export type PointQuality = 'Good' | 'Medium' | 'Poor' | 'Unknown';
 
@@ -42,50 +43,51 @@ const VALUE_SOURCE_LABELS: Record<PointInfoData['valueSource'], string> = {
 };
 
 export function PointInfoSection({ info, onClose }: PointInfoSectionProps) {
+  const { t } = useI18n();
   return (
     <section
       className="oracular-point-section"
       role="region"
-      aria-label="Selected point details"
+      aria-label={t('point.region')}
     >
       <div className="oracular-point-section__header">
         <div>
-          <span>Selected point</span>
-          <h4>Point information</h4>
+          <span>{t('point.selected')}</span>
+          <h4>{t('point.title')}</h4>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close point details">
+        <button type="button" onClick={onClose} aria-label={t('point.close')}>
           <X />
         </button>
       </div>
 
       <dl className="oracular-point-section__data">
         <div>
-          <dt>Coordinates</dt>
+          <dt>{t('point.coordinates')}</dt>
           <dd>{info.coordinates[0].toFixed(4)}, {info.coordinates[1].toFixed(4)}</dd>
         </div>
 
         {info.isOutOfArea ? (
           <div>
-              <dt>Value</dt>
-              <dd>Out of the area of interest</dd>
+              <dt>{t('point.value')}</dt>
+              <dd>{t('point.outside')}</dd>
           </div>
         ) : info.value !== null ? (
           <>
             <div>
-              <dt>{info.isEstimate ? 'Estimated value' : 'Value'}</dt>
+              <dt>{info.isEstimate ? t('point.estimated') : t('point.value')}</dt>
               <dd>{`${info.value.toFixed(2)} ${info.unit ?? ''}`.trim()}</dd>
             </div>
             {info.quality !== 'Unknown' && (
               <div>
-                <dt>Quality</dt>
+                <dt>{t('point.quality')}</dt>
                 <dd>{info.quality}</dd>
               </div>
             )}
           </>
         ) : !info.message ? (
           <div>
-            <dt>Value</dt>
-            <dd>No data available</dd>
+            <dt>{t('point.value')}</dt>
+            <dd>{t('point.noData')}</dd>
           </div>
         ) : null}
 
@@ -96,44 +98,44 @@ export function PointInfoSection({ info, onClose }: PointInfoSectionProps) {
         )}
 
         <div>
-          <dt>Source</dt>
+          <dt>{t('point.source')}</dt>
           <dd>{VALUE_SOURCE_LABELS[info.valueSource]}</dd>
         </div>
         {info.method && (
           <div>
-            <dt>Method</dt>
+            <dt>{t('point.method')}</dt>
             <dd>{info.method}{info.methodVersion ? ` (${info.methodVersion})` : ''}</dd>
           </div>
         )}
         {info.confidence && (
           <div>
-            <dt>Confidence</dt>
+            <dt>{t('point.confidence')}</dt>
             <dd>{info.confidence}</dd>
           </div>
         )}
         {info.colorDistance !== undefined && (
           <div>
-            <dt>Color difference</dt>
+            <dt>{t('point.color')}</dt>
             <dd>{`ΔE ${info.colorDistance.toFixed(2)}`}</dd>
           </div>
         )}
 
         {info.acquisitionDate && (
           <div>
-            <dt>Acquisition</dt>
+            <dt>{t('point.acquisition')}</dt>
             <dd>{info.acquisitionDate}</dd>
           </div>
         )}
         {info.cloudCoverage !== undefined && (
           <div>
-            <dt>Cloud cover</dt>
+            <dt>{t('point.cloud')}</dt>
             <dd>{info.cloudCoverage.toFixed(2)}%</dd>
           </div>
         )}
       </dl>
 
       {info.acquisitionId && (
-        <div className="oracular-point-section__scene">Scene: {info.acquisitionId}</div>
+        <div className="oracular-point-section__scene">{t('point.scene')}: {info.acquisitionId}</div>
       )}
       {info.algorithmReference && (
         <a
@@ -142,7 +144,7 @@ export function PointInfoSection({ info, onClose }: PointInfoSectionProps) {
           target="_blank"
           rel="noreferrer"
         >
-          Algorithm reference
+          {t('point.algorithm')}
         </a>
       )}
     </section>

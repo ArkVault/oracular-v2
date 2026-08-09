@@ -21,6 +21,7 @@ interface MapCanvasProps {
   mapRef: React.MutableRefObject<L.Map | null>;
   onDrawingComplete: () => void;
   onSaveKml: (kml: string) => void;
+  onWmsLoadingChange: (isLoading: boolean) => void;
   selectedAcquisitionDate?: string;
   selectedIndicator: IndicatorDefinition;
   selectedLayer: string;
@@ -47,6 +48,7 @@ export function MapCanvas({
   mapRef,
   onDrawingComplete,
   onSaveKml,
+  onWmsLoadingChange,
   selectedAcquisitionDate,
   selectedIndicator,
   selectedLayer,
@@ -57,6 +59,14 @@ export function MapCanvas({
     ? undefined
     : selectedIndicator.render;
   const renderedLayer = renderConfig?.layer ?? selectedLayer;
+  const wmsLayerKey = [
+    selectedLayer,
+    renderedLayer,
+    selectedAcquisitionDate ?? 'latest-date',
+    selectedTileTime ?? 'latest-time',
+  ].join(':');
+  const [readyWmsLayerKey, setReadyWmsLayerKey] = React.useState<string>();
+  const isWmsLayerReady = readyWmsLayerKey === wmsLayerKey;
 
   return (
     <MapContainer
@@ -72,12 +82,24 @@ export function MapCanvas({
       />
       {selectedLayer && selectedIndicator.type !== 'natural' && (
         <WMSTileLayer
-          key={`${selectedLayer}-${selectedAcquisitionDate ?? 'latest'}`}
+          key={wmsLayerKey}
           url={appConfig.copernicusWmsUrl}
           layers={renderedLayer}
           format="image/png"
           transparent
           version="1.3.0"
+          keepBuffer={0}
+          opacity={isWmsLayerReady ? 1 : 0}
+          eventHandlers={{
+            loading: () => {
+              setReadyWmsLayerKey(undefined);
+              onWmsLoadingChange(true);
+            },
+            load: () => {
+              setReadyWmsLayerKey(wmsLayerKey);
+              onWmsLoadingChange(false);
+            },
+          }}
           params={{
             layers: renderedLayer,
             ...(selectedIndicator.acquisitionCollection === 'sentinel-1'

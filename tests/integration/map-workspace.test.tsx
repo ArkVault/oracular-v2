@@ -9,6 +9,7 @@ const mapHarness = vi.hoisted(() => {
       containerPoint?: { x: number; y: number };
     }) => Promise<void>),
     map: {} as Record<string, unknown>,
+    wmsLoadHandler: null as null | (() => void),
   };
 
   harness.map = {
@@ -73,15 +74,32 @@ vi.mock('react-leaflet', async () => {
       );
     }),
     TileLayer: () => <div data-testid="base-layer" />,
-    WMSTileLayer: ({ layers, params }: { layers: string; params?: Record<string, string | number> }) => (
-      <div
-        data-testid="wms-layer"
-        data-layers={layers}
-        data-time={params?.TIME}
-        data-maxcc={params?.MAXCC}
-        data-evalscript={params?.EVALSCRIPT}
-      />
-    ),
+    WMSTileLayer: ({
+      eventHandlers,
+      keepBuffer,
+      layers,
+      opacity,
+      params,
+    }: {
+      eventHandlers?: { load?: () => void };
+      keepBuffer?: number;
+      layers: string;
+      opacity?: number;
+      params?: Record<string, string | number>;
+    }) => {
+      mapHarness.wmsLoadHandler = eventHandlers?.load ?? null;
+      return (
+        <div
+          data-testid="wms-layer"
+          data-layers={layers}
+          data-time={params?.TIME}
+          data-maxcc={params?.MAXCC}
+          data-evalscript={params?.EVALSCRIPT}
+          data-opacity={opacity}
+          data-keep-buffer={keepBuffer}
+        />
+      );
+    },
   };
 });
 
@@ -90,6 +108,7 @@ vi.mock('../../src/components/Map/DrawControl', () => ({
 }));
 
 import { Map } from '../../src/components/Map/Map';
+import App from '../../src/App';
 import { createAppServices, type AppServices } from '../../src/app/services';
 import type { AcquisitionDate } from '../../src/features/acquisitions/ports/acquisition-date-provider';
 
@@ -103,6 +122,12 @@ const ACQUISITION_FIXTURE = {
 function createTestServices(acquisitions: AcquisitionDate[] = []): AppServices {
   return {
     ...createAppServices(),
+    analysisAccess: {
+      consume: vi.fn().mockResolvedValue({
+        remaining: 4,
+        resetAt: '2026-08-09T18:00:00.000Z',
+      }),
+    },
     acquisitionDates: {
       list: vi.fn().mockResolvedValue(acquisitions),
     },
@@ -111,7 +136,14 @@ function createTestServices(acquisitions: AcquisitionDate[] = []): AppServices {
 
 describe('Map workspace integration', () => {
   beforeEach(() => {
+    const storedPreferences = new globalThis.Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storedPreferences.get(key) ?? null),
+      removeItem: vi.fn((key: string) => storedPreferences.delete(key)),
+      setItem: vi.fn((key: string, value: string) => storedPreferences.set(key, value)),
+    });
     mapHarness.clickHandler = null;
+    mapHarness.wmsLoadHandler = null;
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.stubGlobal(
       'fetch',
@@ -137,6 +169,8 @@ describe('Map workspace integration', () => {
     expect(screen.getByRole('button', { name: 'Search' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Account' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Turn off workflow guide' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Turn off workflow guide' })).toHaveTextContent('Guide');
     expect(screen.getByRole('button', { name: 'Chlorophyll-a' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Water Quality' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Water Quality' })).toHaveAttribute(
@@ -159,21 +193,275 @@ describe('Map workspace integration', () => {
     expect(screen.queryByRole('button', { name: 'Dashboard' })).toBeNull();
   });
 
-  it('should start and reset the default map view on Holbox, Mexico', () => {
+  it('should keep developer access compact and close it before opening another header control', async () => {
+    // ARRANGE
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      json: async () => ({ authenticated: true }),
+      ok: true,
+      text: async () => '<WMS_Capabilities />',
+    }));
+    render(<Map services={createTestServices([ACQUISITION_FIXTURE])} />);
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const developerAccess = await screen.findByRole('dialog', { name: 'Developer access' });
+
+    // ASSERT
+    expect(developerAccess).toHaveClass('oracular-developer-popover');
+    expect(document.querySelector('.oracular-developer-backdrop')).toBeNull();
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Dates' }));
+
+    // ASSERT
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Available acquisition dates' })).toBeVisible();
+
+    // ACT + ASSERT — sensors
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.queryByRole('dialog', { name: 'Available acquisition dates' })).toBeNull();
+    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Sensors' }));
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Available sensors' })).toBeVisible();
+
+    // ACT + ASSERT — search
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.queryByRole('dialog', { name: 'Available sensors' })).toBeNull();
+    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByPlaceholderText('Search places...')).toBeVisible();
+  });
+
+  it('should collapse developer access after a successful sign-in', async () => {
+    // ARRANGE
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        json: async () => ({ authenticated: false }),
+        ok: true,
+      })
+      .mockResolvedValueOnce({ ok: true }));
+    render(<Map services={createTestServices()} />);
+
+    // ACT
+    const account = screen.getByRole('button', { name: 'Account' });
+    fireEvent.click(account);
+    const passphrase = await screen.findByLabelText('Developer passphrase');
+    fireEvent.change(passphrase, { target: { value: 'private-test-passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enable unlimited testing' }));
+
+    // ASSERT
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    });
+    expect(account).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('should use a distinct semantic icon for every primary indicator', () => {
     // ARRANGE + ACT
     render(<Map services={createTestServices()} />);
+    const naturalColorIcon = screen.getByRole('button', { name: 'Natural Color' })
+      .querySelector('svg');
+    const chlorophyllIcon = screen.getByRole('button', { name: 'Chlorophyll-a' })
+      .querySelector('svg');
+    const waterQualityIcon = screen.getByRole('button', { name: 'Water Quality' })
+      .querySelector('svg');
+    const forestFireIcon = screen.getByRole('button', { name: 'Forest Fire Detection' })
+      .querySelector('svg');
+    const oilSpillIcon = screen.getByRole('button', { name: 'Oil Spill Detection' })
+      .querySelector('svg');
+    const sargassumIcon = screen.getByRole('button', { name: 'Sargassum Detection' })
+      .querySelector('svg');
+
+    // ASSERT
+    expect(naturalColorIcon).toHaveClass('lucide-satellite');
+    expect(chlorophyllIcon).toHaveClass('lucide-sprout');
+    expect(waterQualityIcon).toHaveClass('lucide-flask-conical');
+    expect(forestFireIcon).toHaveClass('lucide-flame');
+    expect(oilSpillIcon).toHaveClass('lucide-droplet');
+    expect(sargassumIcon).toHaveClass('lucide-leaf');
+  });
+
+  it('should keep a glass edge on the indicator panel for dark imagery', () => {
+    // ARRANGE + ACT
+    render(<Map services={createTestServices()} />);
+    const indicatorPanel = screen.getByRole('heading', { name: 'Indicators' })
+      .closest('.oracular-indicator-panel');
+
+    // ASSERT
+    expect(indicatorPanel).toHaveClass('has-glass-edge');
+  });
+
+  it('should apply Figtree to titles and DM Sans to panels and references', () => {
+    // ARRANGE + ACT
+    render(<Map services={createTestServices()} />);
+    const mapShell = screen.getByRole('navigation', { name: 'Primary navigation' })
+      .closest('.map-shell') as HTMLElement;
+
+    // ASSERT
+    expect(mapShell.style.getPropertyValue('--oracular-font-title')).toContain('Figtree');
+    expect(mapShell.style.getPropertyValue('--oracular-font-body')).toContain('DM Sans');
+    expect(screen.getByRole('complementary', { name: 'Natural Color details' }))
+      .toHaveClass('oracular-detail-panel');
+  });
+
+  it('should show only a concise demo-limit badge in Natural Color', () => {
+    // ARRANGE + ACT
+    render(<Map services={createTestServices()} />);
+    const details = screen.getByRole('complementary', { name: 'Natural Color details' });
+
+    // ASSERT
+    expect(within(details).getByText('Demo · 1 analysis per indicator / 24h per IP')).toBeVisible();
+    expect(within(details).queryByRole('note', {
+      name: 'Request efficiency and API safeguards',
+    })).toBeNull();
+    expect(within(details).queryByText(/create one active analysis request/i)).toBeNull();
+  });
+
+  it('should guide place search, date, and indicator selection and allow the guide to be toggled', async () => {
+    // ARRANGE
+    await import('react-day-picker');
+    const services = {
+      ...createTestServices([ACQUISITION_FIXTURE]),
+      placeSearch: {
+        search: vi.fn().mockResolvedValue([{
+          id: 'holbox',
+          latitude: 21.52324,
+          longitude: -87.37781,
+          name: 'Holbox, Quintana Roo, Mexico',
+        }]),
+      },
+    };
+    render(<Map services={services} />);
+
+    // ACT + ASSERT — place search
+    const guide = screen.getByRole('dialog', { name: 'Workflow guide' });
+    const spotlight = screen.getByTestId('workflow-spotlight');
+    expect(spotlight).toHaveAttribute('data-step', 'search');
+    const mapShell = guide.closest('.map-shell');
+    expect(mapShell).toHaveClass('has-workflow-guide', 'workflow-step-search');
+    expect(within(guide).getByText('Search for a place')).toBeVisible();
+    expect(within(guide).getByText('Step 1 of 4')).toBeVisible();
+    fireEvent.click(within(guide).getByRole('button', { name: 'Open Search' }));
+    const searchInput = screen.getByPlaceholderText('Search places...');
+    vi.useFakeTimers();
+    fireEvent.change(searchInput, { target: { value: 'Holbox' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    vi.useRealTimers();
+    fireEvent.click(await screen.findByRole('button', { name: 'Holbox, Quintana Roo, Mexico' }));
+
+    // ACT + ASSERT — date
+    expect(within(guide).getByText('Choose an acquisition date')).toBeVisible();
+    expect(spotlight).toHaveAttribute('data-step', 'dates');
+    expect(mapShell).toHaveClass('workflow-step-dates');
+    expect(within(guide).getByText('Step 2 of 4')).toBeVisible();
+    fireEvent.click(within(guide).getByRole('button', { name: 'Open Dates' }));
+    expect(screen.getByTestId('calendar-backdrop')).toBeVisible();
+    const calendar = await screen.findByRole('grid', { name: 'August 2026' });
+    fireEvent.click(within(calendar).getByRole('button', {
+      name: /^Tuesday, August 4th, 2026/,
+    }));
+
+    // ACT + ASSERT — indicator
+    expect(within(guide).getByText('Choose an indicator')).toBeVisible();
+    expect(within(guide).getByText(/1 analysis per indicator and IP address/i)).toBeVisible();
+    expect(within(guide).getByText(/rolling 24-hour window/i)).toBeVisible();
+    expect(spotlight).toHaveAttribute('data-step', 'indicators');
+    expect(mapShell).toHaveClass('workflow-step-indicators');
+    expect(within(guide).getByText('Step 3 of 4')).toBeVisible();
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+    vi.useRealTimers();
+
+    // ACT + ASSERT — ready
+    await waitFor(() => {
+      expect(within(guide).getByRole('heading', { name: 'Ready to go' })).toBeVisible();
+    });
+    expect(spotlight).toHaveAttribute('data-step', 'ready');
+    expect(mapShell).toHaveClass('workflow-step-ready');
+    expect(within(guide).getByText('Step 4 of 4')).toBeVisible();
+    fireEvent.click(within(guide).getByRole('button', { name: 'Ready to go' }));
+    expect(screen.queryByRole('dialog', { name: 'Workflow guide' })).toBeNull();
+
+    // ACT + ASSERT — top-bar toggle
+    const toggle = screen.getByRole('button', { name: 'Turn on workflow guide' });
+    fireEvent.click(toggle);
+    expect(screen.getByRole('dialog', { name: 'Workflow guide' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off workflow guide' }));
+    expect(screen.queryByRole('dialog', { name: 'Workflow guide' })).toBeNull();
+    expect(window.localStorage.getItem('oracular.workflow-guide')).toBe('off');
+  });
+
+  it('should block a repeated indicator analysis before mounting its WMS layer', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    const services = createTestServices();
+    services.analysisAccess.consume = vi.fn().mockRejectedValue(
+      Object.assign(new Error('Analysis limit exceeded'), {
+        name: 'AnalysisLimitExceededError',
+        resetAt: '2026-08-09T13:00:00.000Z',
+      }),
+    );
+    render(<Map services={services} />);
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    // ASSERT
+    expect(services.analysisAccess.consume).toHaveBeenCalledWith(
+      'Chlorophyll-a',
+      expect.any(AbortSignal),
+    );
+    expect(screen.queryByTestId('wms-layer')).toBeNull();
+    expect(screen.queryByRole('status', { name: 'Analyzing satellite data' })).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('This indicator was already used');
+    expect(screen.getByRole('alert')).toHaveTextContent('09 Aug 2026');
+  });
+
+  it('should keep the workflow guide off after the user dismisses it', () => {
+    // ARRANGE
+    const view = render(<Map services={createTestServices()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off workflow guide' }));
+    view.unmount();
+
+    // ACT
+    render(<Map services={createTestServices()} />);
+
+    // ASSERT
+    expect(screen.queryByRole('dialog', { name: 'Workflow guide' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Turn on workflow guide' })).toHaveTextContent('Guide');
+  });
+
+  it('should start and reset the default map view on Ciudad del Carmen, Mexico', () => {
+    // ARRANGE
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      type: 'FeatureCollection',
+      features: [],
+    }), { status: 200 })));
+
+    // ACT
+    render(<App />);
 
     // ASSERT
     expect(screen.getByTestId('map-container')).toHaveAttribute(
       'data-center',
-      '[21.52324,-87.37781]',
+      '[18.64592,-91.82991]',
     );
-    expect(screen.getByTestId('map-container')).toHaveAttribute('data-zoom', '12');
+    expect(screen.getByTestId('map-container')).toHaveAttribute('data-zoom', '10');
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
     expect(mapHarness.map.setView as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
-      [21.52324, -87.37781],
-      12,
+      [18.64592, -91.82991],
+      10,
     );
   });
 
@@ -292,7 +580,7 @@ describe('Map workspace integration', () => {
     );
   });
 
-  it('should expand Water Quality into NDCI, CDOM, Turbidity, and TSS only', () => {
+  it('should expand Water Quality without NDCI while preserving Chlorophyll-a', () => {
     // ARRANGE
     render(<Map services={createTestServices()} />);
 
@@ -303,10 +591,9 @@ describe('Map workspace integration', () => {
     // ASSERT
     expect(waterQualityButton).toHaveAttribute('aria-expanded', 'true');
     const indices = screen.getByRole('group', { name: 'MAGO water quality indices' });
-    expect(within(indices).getAllByRole('button')).toHaveLength(4);
-    expect(within(indices).getByRole('button', {
-      name: /Index 0.*Chlorophyll-a.*NDCI.*Available/,
-    })).toBeEnabled();
+    expect(within(indices).getAllByRole('button')).toHaveLength(3);
+    expect(within(indices).queryByRole('button', { name: /NDCI/i })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Chlorophyll-a' })).toBeVisible();
     expect(within(indices).getByRole('button', {
       name: /Index 6.*CDOM.*µg\/L QSE.*Available/,
     })).toBeEnabled();
@@ -398,56 +685,6 @@ describe('Map workspace integration', () => {
     })).toHaveTextContent('Level-1C');
   });
 
-  it('should mount the configured MAGO water-quality index and its traceable scale', async () => {
-    // ARRANGE
-    vi.useFakeTimers();
-    render(<Map services={createTestServices()} />);
-
-    // ACT
-    fireEvent.click(screen.getByRole('button', { name: 'Water Quality' }));
-    fireEvent.click(screen.getByRole('button', {
-      name: /Index 0.*Chlorophyll-a.*NDCI.*Available/,
-    }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3_000);
-    });
-
-    // ASSERT
-    const waterQualityLayer = screen.getByTestId('wms-layer');
-    expect(waterQualityLayer).toHaveAttribute('data-layers', 'CHLA');
-    const encodedEvalscript = waterQualityLayer.getAttribute('data-evalscript');
-    expect(encodedEvalscript).toBeTruthy();
-    expect(atob(encodedEvalscript ?? '')).toContain('MAGO Water Quality Monitoring Tool');
-    expect(atob(encodedEvalscript ?? '')).toContain('14.039 + 86.11 * ndci');
-    const details = screen.getByRole('complementary', {
-      name: 'Water Quality details',
-    });
-    expect(within(details).getByText('MAGO index 0 — Chlorophyll-a (NDCI)')).toBeVisible();
-    expect(within(details).getByLabelText('Water Quality color scale')).toBeVisible();
-    expect(within(details).getByText('0 mg/m³')).toBeVisible();
-    expect(within(details).getByText('30 mg/m³')).toBeVisible();
-    expect(within(details).queryByRole('link', {
-      name: 'MAGO Water Quality Monitoring Tool',
-    })).toBeNull();
-    const implementationNote = within(details).getByRole('note', {
-      name: 'Oracular improved index implementation',
-    });
-    expect(within(implementationNote).getByText(
-      'Improved index implementation by Oracular',
-    )).toBeVisible();
-    expect(within(details).queryByText('Modified for this map')).toBeNull();
-    expect(implementationNote).toHaveTextContent(
-      'The index 0 formula and 0–30 mg/m³ palette are preserved.',
-    );
-    expect(implementationNote).toHaveTextContent(
-      'The original Level-2A SCL workflow was adapted to the available Level-1C WMS layer',
-    );
-    expect(within(details).getByText('Scientific citation')).toBeVisible();
-    expect(within(details).getByRole('link', {
-      name: 'Mishra & Mishra (2012) — Normalized Difference Chlorophyll Index',
-    })).toHaveAttribute('href', 'https://doi.org/10.1016/j.rse.2011.10.016');
-  });
-
   it('should defer drawing tools until the first drawing command', async () => {
     render(<Map services={createTestServices()} />);
 
@@ -519,7 +756,15 @@ describe('Map workspace integration', () => {
       }), { status: 200 }),
     ));
     vi.useFakeTimers();
-    render(<Map />);
+    render(<Map services={{
+      ...createAppServices(),
+      analysisAccess: {
+        consume: vi.fn().mockResolvedValue({
+          remaining: 4,
+          resetAt: '2026-08-09T18:00:00.000Z',
+        }),
+      },
+    }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3_000);
@@ -533,7 +778,8 @@ describe('Map workspace integration', () => {
     await waitFor(() => {
       expect(screen.getByText('2 cloud-safe acquisitions')).toBeVisible();
     });
-    const augustCalendar = screen.getByRole('grid', { name: 'August 2026' });
+    expect(screen.getByText('Colored dates have available imagery')).toBeVisible();
+    const augustCalendar = await screen.findByRole('grid', { name: 'August 2026' });
     const availableDay = within(augustCalendar).getByRole('button', {
       name: /^Tuesday, August 4th, 2026/,
     });
@@ -542,6 +788,12 @@ describe('Map workspace integration', () => {
     expect(within(augustCalendar).getByRole('button', {
       name: 'Wednesday, August 5th, 2026',
     })).toBeDisabled();
+    expect(within(augustCalendar).queryByRole('button', {
+      name: 'Friday, July 31st, 2026',
+    })).toBeNull();
+    expect(within(augustCalendar).queryByRole('button', {
+      name: 'Tuesday, September 1st, 2026',
+    })).toBeNull();
 
     expect(screen.getByTestId('wms-layer')).toHaveAttribute(
       'data-time',
@@ -558,6 +810,7 @@ describe('Map workspace integration', () => {
   });
 
   it.each([
+    'Natural Color',
     'Chlorophyll-a',
     'Forest Fire Detection',
   ])('should show the image acquisition badge in the %s view', async (parameter) => {
@@ -581,7 +834,7 @@ describe('Map workspace integration', () => {
     );
   });
 
-  it('should show the acquisition badge after applying MAGO index 0', async () => {
+  it('should show the acquisition badge after applying a water-quality index', async () => {
     // ARRANGE
     vi.useFakeTimers();
     render(<Map services={createTestServices([ACQUISITION_FIXTURE])} />);
@@ -589,7 +842,7 @@ describe('Map workspace integration', () => {
     // ACT
     fireEvent.click(screen.getByRole('button', { name: 'Water Quality' }));
     fireEvent.click(screen.getByRole('button', {
-      name: /Index 0.*Chlorophyll-a.*NDCI.*Available/,
+      name: /Index 6.*CDOM.*Available/,
     }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3_000);
@@ -624,6 +877,78 @@ describe('Map workspace integration', () => {
     expect(within(details).getByText('Calibrated measurement range unavailable')).toBeVisible();
     expect(within(details).getByText(/provider palette and scientific value mapping/i)).toBeVisible();
     expect(within(details).queryByLabelText('Chlorophyll-a color scale')).toBeNull();
+    const implementationNote = within(details).getByRole('note', {
+      name: 'Oracular improved index implementation',
+    });
+    expect(implementationNote).toHaveTextContent('does not claim MCI equivalence');
+    expect(implementationNote).toHaveTextContent('latest-request-only');
+    expect(within(details).getByText(/Ulyssys is a qualitative MCI benchmark/i)).toBeVisible();
+    expect(within(details).getByRole('link', {
+      name: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
+    })).toHaveAttribute(
+      'href',
+      'https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/ulyssys_water_quality_viewer/',
+    );
+    expect(within(details).getByRole('link', {
+      name: 'Ulyssys technical description supplementary',
+    })).toHaveAttribute('href', 'https://doi.org/10.20944/preprints202001.0386.v1');
+  });
+
+  it('should reveal an indicator mosaic only after all visible WMS tiles load', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    render(<Map services={createTestServices()} />);
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    // ASSERT — incomplete mosaics stay hidden over the basemap
+    expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-opacity', '0');
+    expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-keep-buffer', '0');
+    expect(screen.getByRole('status', { name: 'Analyzing satellite data' })).toBeVisible();
+
+    // ACT — Leaflet confirms every visible tile is ready
+    act(() => mapHarness.wmsLoadHandler?.());
+
+    // ASSERT — the complete mosaic is revealed atomically
+    expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-opacity', '1');
+    expect(screen.queryByRole('status', { name: 'Analyzing satellite data' })).toBeNull();
+  });
+
+  it('should discard pending indicator loads and mount only the latest request', async () => {
+    // ARRANGE — start with a fully mounted indicator layer
+    vi.useFakeTimers();
+    render(<Map services={createTestServices()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+    expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', 'CHLA');
+
+    // ACT — replace an in-flight oil-spill request with sargassum
+    fireEvent.click(screen.getByRole('button', { name: 'Oil Spill Detection' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sargassum Detection' }));
+
+    // ASSERT — the previous layer and superseded request remain absent
+    expect(screen.queryByTestId('wms-layer')).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(screen.queryByTestId('wms-layer')).toBeNull();
+
+    // ACT — allow only the latest request to become active
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    // ASSERT
+    expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', 'INFRAR');
   });
 
   it.each([
@@ -661,7 +986,7 @@ describe('Map workspace integration', () => {
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText(/Calibrated concentration unavailable/)).toBeVisible();
+    expect(within(pointDetails).getByText(/Region-specific calibration data may be supplied/)).toBeVisible();
     expect(within(pointDetails).getByText('Unavailable')).toBeVisible();
     expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', renderedLayer);

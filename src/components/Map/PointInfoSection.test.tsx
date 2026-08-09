@@ -49,14 +49,14 @@ describe('PointInfoSection', () => {
           isEstimate: false,
           quality: 'Unknown',
           coordinates: [20.2, -103.05],
-          message: 'Calibrated concentration unavailable. The selected layer returns rendered color channels, but its scientific value-to-color mapping is not available.',
+          message: 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.',
         }}
         onClose={vi.fn()}
       />,
     );
 
     // ASSERT
-    expect(screen.getByText(/Calibrated concentration unavailable/)).toBeVisible();
+    expect(screen.getByText(/Region-specific calibration data may be supplied/)).toBeVisible();
     expect(screen.getByText('Unavailable')).toBeVisible();
     expect(screen.queryByText('Out of the area of interest')).toBeNull();
   });
