@@ -122,6 +122,12 @@ const ACQUISITION_FIXTURE = {
 function createTestServices(acquisitions: AcquisitionDate[] = []): AppServices {
   return {
     ...createAppServices(),
+    analysisAccess: {
+      consume: vi.fn().mockResolvedValue({
+        remaining: 4,
+        resetAt: '2026-08-09T18:00:00.000Z',
+      }),
+    },
     acquisitionDates: {
       list: vi.fn().mockResolvedValue(acquisitions),
     },
@@ -235,6 +241,19 @@ describe('Map workspace integration', () => {
       .toHaveClass('oracular-detail-panel');
   });
 
+  it('should show only a concise demo-limit badge in Natural Color', () => {
+    // ARRANGE + ACT
+    render(<Map services={createTestServices()} />);
+    const details = screen.getByRole('complementary', { name: 'Natural Color details' });
+
+    // ASSERT
+    expect(within(details).getByText('Demo · 1 analysis per indicator / 24h per IP')).toBeVisible();
+    expect(within(details).queryByRole('note', {
+      name: 'Request efficiency and API safeguards',
+    })).toBeNull();
+    expect(within(details).queryByText(/create one active analysis request/i)).toBeNull();
+  });
+
   it('should guide place search, date, and indicator selection and allow the guide to be toggled', async () => {
     // ARRANGE
     await import('react-day-picker');
@@ -283,6 +302,8 @@ describe('Map workspace integration', () => {
 
     // ACT + ASSERT — indicator
     expect(within(guide).getByText('Choose an indicator')).toBeVisible();
+    expect(within(guide).getByText(/1 analysis per indicator and IP address/i)).toBeVisible();
+    expect(within(guide).getByText(/rolling 24-hour window/i)).toBeVisible();
     expect(spotlight).toHaveAttribute('data-step', 'indicators');
     expect(mapShell).toHaveClass('workflow-step-indicators');
     expect(within(guide).getByText('Step 3 of 4')).toBeVisible();
@@ -310,6 +331,35 @@ describe('Map workspace integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn off workflow guide' }));
     expect(screen.queryByRole('dialog', { name: 'Workflow guide' })).toBeNull();
     expect(window.localStorage.getItem('oracular.workflow-guide')).toBe('off');
+  });
+
+  it('should block a repeated indicator analysis before mounting its WMS layer', async () => {
+    // ARRANGE
+    vi.useFakeTimers();
+    const services = createTestServices();
+    services.analysisAccess.consume = vi.fn().mockRejectedValue(
+      Object.assign(new Error('Analysis limit exceeded'), {
+        name: 'AnalysisLimitExceededError',
+        resetAt: '2026-08-09T13:00:00.000Z',
+      }),
+    );
+    render(<Map services={services} />);
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    // ASSERT
+    expect(services.analysisAccess.consume).toHaveBeenCalledWith(
+      'Chlorophyll-a',
+      expect.any(AbortSignal),
+    );
+    expect(screen.queryByTestId('wms-layer')).toBeNull();
+    expect(screen.queryByRole('status', { name: 'Analyzing satellite data' })).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('This indicator was already used');
+    expect(screen.getByRole('alert')).toHaveTextContent('09 Aug 2026');
   });
 
   it('should keep the workflow guide off after the user dismisses it', () => {
@@ -641,7 +691,15 @@ describe('Map workspace integration', () => {
       }), { status: 200 }),
     ));
     vi.useFakeTimers();
-    render(<Map />);
+    render(<Map services={{
+      ...createAppServices(),
+      analysisAccess: {
+        consume: vi.fn().mockResolvedValue({
+          remaining: 4,
+          resetAt: '2026-08-09T18:00:00.000Z',
+        }),
+      },
+    }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3_000);
@@ -863,7 +921,7 @@ describe('Map workspace integration', () => {
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText(/Calibrated concentration unavailable/)).toBeVisible();
+    expect(within(pointDetails).getByText(/Region-specific calibration data may be supplied/)).toBeVisible();
     expect(within(pointDetails).getByText('Unavailable')).toBeVisible();
     expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', renderedLayer);

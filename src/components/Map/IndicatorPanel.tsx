@@ -5,7 +5,9 @@ import {
   INDICATORS,
   WATER_QUALITY_INDEX_OPTIONS,
   type IndicatorDefinition,
+  localizeIndicator,
 } from './indicator-definitions';
+import { useI18n } from '@/i18n/i18n';
 
 interface IndicatorPanelProps {
   isVisible: boolean;
@@ -20,6 +22,7 @@ export function IndicatorPanel({
   onToggle,
   selectedIndicator,
 }: IndicatorPanelProps) {
+  const { language, t } = useI18n();
   const [isWaterQualityExpanded, setIsWaterQualityExpanded] = React.useState(false);
 
   return (
@@ -30,11 +33,12 @@ export function IndicatorPanel({
         }`}
       >
         <div className="oracular-panel__heading">
-          <h2>Indicators</h2>
+          <h2>{t('indicator.title')}</h2>
         </div>
         <div className="oracular-indicator-list">
           {INDICATORS.map((indicator) => {
             const Icon = indicator.icon;
+            const displayIndicator = localizeIndicator(indicator, language);
             const isWaterQuality = indicator.name === 'Water Quality';
 
             if (isWaterQuality) {
@@ -48,7 +52,7 @@ export function IndicatorPanel({
                     onClick={() => setIsWaterQualityExpanded((expanded) => !expanded)}
                   >
                     <span className="oracular-indicator-button__icon"><Icon /></span>
-                    <span>{indicator.name}</span>
+                    <span>{displayIndicator.name}</span>
                     <ChevronDown
                       className={`oracular-indicator-button__chevron ${
                         isWaterQualityExpanded ? 'is-expanded' : ''
@@ -62,7 +66,10 @@ export function IndicatorPanel({
                       aria-label="MAGO water quality indices"
                     >
                       {WATER_QUALITY_INDEX_OPTIONS.map((option) => {
-                        const status = option.indicator ? 'Available' : 'Pending calibration';
+                        const status = option.indicator ? t('indicator.available') : t('indicator.pending');
+                        const displayOption = option.indicator
+                          ? localizeIndicator(option.indicator, language)
+                          : undefined;
                         return (
                           <button
                             key={option.index}
@@ -81,7 +88,7 @@ export function IndicatorPanel({
                               {option.index}
                             </span>
                             <span className="oracular-subindicator-button__content">
-                              <strong>{option.label}</strong>
+                              <strong>{displayOption?.name ?? option.label}</strong>
                               <small>{option.unit} · {status}</small>
                             </span>
                           </button>
@@ -102,7 +109,7 @@ export function IndicatorPanel({
                 onClick={() => onSelect(indicator)}
               >
                 <span className="oracular-indicator-button__icon"><Icon /></span>
-                <span>{indicator.name}</span>
+                <span>{displayIndicator.name}</span>
               </button>
             );
           })}
@@ -111,7 +118,7 @@ export function IndicatorPanel({
       <button
         className="oracular-panel-toggle"
         onClick={onToggle}
-        aria-label={isVisible ? 'Hide indicators' : 'Show indicators'}
+        aria-label={isVisible ? t('indicator.hide') : t('indicator.show')}
       >
         {isVisible ? <ChevronLeft /> : <ChevronRight />}
       </button>

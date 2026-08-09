@@ -154,7 +154,7 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
       ...(!scalarIsValid && !isOutOfArea
         ? {
             message: outputValues.length >= 3
-              ? 'Calibrated concentration unavailable. The selected layer returns rendered color channels, but its scientific value-to-color mapping is not available.'
+              ? 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.'
               : 'A scientifically traceable scalar is not available for this point.',
           }
         : isOutOfArea
