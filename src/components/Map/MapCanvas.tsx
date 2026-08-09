@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, WMSTileLayer } from 'react-leaflet';
 import { appConfig } from '@/app/config';
 import { DEFAULT_MAX_CLOUD_COVERAGE } from '@/features/acquisitions/domain/cloud-coverage';
 
+import { ContextualOilSpillLayer } from './ContextualOilSpillLayer';
 import type { IndicatorDefinition } from './indicator-definitions';
 import type { DrawMode } from './map-types';
 
@@ -67,6 +68,7 @@ export function MapCanvas({
   ].join(':');
   const [readyWmsLayerKey, setReadyWmsLayerKey] = React.useState<string>();
   const isWmsLayerReady = readyWmsLayerKey === wmsLayerKey;
+  const usesContextualOilSpill = selectedLayer === 'OIL-SPILL-SAR';
 
   return (
     <MapContainer
@@ -80,7 +82,15 @@ export function MapCanvas({
         url={appConfig.basemapTileUrl}
         attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
       />
-      {selectedLayer && selectedIndicator.type !== 'natural' && (
+      {selectedLayer && selectedIndicator.type !== 'natural' && usesContextualOilSpill && (
+        <ContextualOilSpillLayer
+          key={wmsLayerKey}
+          layerKey={wmsLayerKey}
+          onLoadingChange={onWmsLoadingChange}
+          selectedAcquisitionDate={selectedAcquisitionDate}
+        />
+      )}
+      {selectedLayer && selectedIndicator.type !== 'natural' && !usesContextualOilSpill && (
         <WMSTileLayer
           key={wmsLayerKey}
           url={appConfig.copernicusWmsUrl}

@@ -10,10 +10,10 @@ import {
 } from 'lucide-react';
 
 import magoWaterQualityEvalscript from '../../../sentinel-hub/evalscripts/mago-water-quality-index-0-wms.js?raw';
+import chlorophyllMciEvalscript from '../../../sentinel-hub/evalscripts/chlorophyll-a-mci-wms.js?raw';
 import magoTurbidityEvalscript from '../../../sentinel-hub/evalscripts/mago-water-quality-index-5-wms.js?raw';
 import magoCdomEvalscript from '../../../sentinel-hub/evalscripts/mago-water-quality-index-6-wms.js?raw';
 import magoTssEvalscript from '../../../sentinel-hub/evalscripts/mago-water-quality-index-7-wms.js?raw';
-import oilSpillSarEvalscript from '../../../sentinel-hub/evalscripts/oil-spill-sar-screening.js?raw';
 import sargassumSarEvalscript from '../../../sentinel-hub/evalscripts/sargassum-sar-screening.js?raw';
 import type { AcquisitionCollection } from '@/features/acquisitions/ports/acquisition-date-provider';
 import type { Language } from '@/i18n/i18n';
@@ -67,9 +67,9 @@ const SPANISH_INDICATORS: Record<string, Partial<IndicatorDefinition>> = {
   },
   'Chlorophyll-a': {
     name: 'Clorofila-a',
-    description: 'La capa CHLA configurada se conserva como una vista cualitativa de patrones posiblemente relacionados con clorofila-a. No debe interpretarse como concentración hasta contar con el evalscript, bandas, preprocesamiento, coeficientes, paleta, dominio de calibración y validación local del proveedor.',
-    implementationNote: 'Frente al referente Ulyssys, Oracular no afirma equivalencia MCI ni concentración calibrada porque el evalscript remoto no está expuesto. Las mejoras son trazabilidad y seguridad de entrega: sin escalas inventadas ni inversión RGB, con fecha de adquisición, carga exclusiva de la última solicitud y revelado atómico del mosaico.',
-    quote: 'Revisión de cumplimiento científico: Ulyssys es un referente MCI cualitativo para Sentinel-2. El método CHLA del proveedor no está publicado; su equivalencia algorítmica y sus valores cuantitativos no están verificados.',
+    description: 'Vista cualitativa de clorofila-a basada en el Maximum Chlorophyll Index (MCI) de Ulyssys para Sentinel-2. La escala −0.005 a 0.05 representa contraste espectral MCI y no concentración en mg/m³. La máscara NDWI + Hollstein y CLM oscurece tierra, nubes y superficies no aceptadas como agua.',
+    implementationNote: 'Oracular adaptó el evalscript entregado a VERSION=3 para WMS y aisló únicamente la rama MCI de Sentinel-2: la mezcla TSS queda desactivada para que el color sea trazable a un solo índice. Se preservan fórmula, dominio y paleta Ulyssys, se añade el guard de nube CLM disponible en la colección y se mantiene la política de última solicitud. Es un índice cualitativo, no una concentración; una conversión a mg/m³ exige calibración regional e in situ.',
+    quote: 'Implementación Ulyssys MCI para Sentinel-2: indicador cualitativo de contraste espectral asociado con clorofila superficial, no concentración calibrada.',
   },
   'Water Quality': {
     name: 'Calidad del agua',
@@ -97,8 +97,8 @@ const SPANISH_INDICATORS: Record<string, Partial<IndicatorDefinition>> = {
   },
   'Oil Spill Detection': {
     name: 'Detección de Derrames de Petróleo',
-    description: 'Exploración Sentinel-1 GRD VV/VH de retornos oscuros compatibles con hidrocarburos en mar abierto y costa. El rojo marca candidatos para revisión, no petróleo confirmado.',
-    implementationNote: 'Oracular convierte VV/VH calibrados a decibeles, aplica límites publicados de agua permanente y después evalúa retornos oscuros. El umbral es una línea base de exploración: viento bajo, películas biogénicas, lluvia, sombras y artefactos pueden parecerse a un derrame. Toda alerta exige confirmación contextual.',
+    description: 'Exploración contextual Sentinel-1 GRD VV/VH de anomalías oscuras compatibles con hidrocarburos en mar abierto y costa. El rojo se reserva para candidatos conectados al agua marina y distintos de su fondo SAR local; no representa petróleo confirmado.',
+    implementationNote: 'Oracular verifica VV/VH calibrados en potencia lineal, los convierte a decibeles y aplica los límites publicados de agua permanente VV ≤ −15 dB y VH ≤ −22.9 dB. El procesador mejorado conserva agua SAR conectada al borde con margen y evalúa el umbral publicado de −25 dB VV mediante una ventana CFAR local con línea base de falsa alarma del 1%. El agua uniformemente oscura por poco viento permanece como fondo salvo que también sea una anomalía local. Sigue siendo exploración: películas biogénicas, lluvia, estelas, frentes y artefactos pueden parecerse a un derrame. Toda alerta exige confirmación contextual.',
     quote: 'Retornos SAR oscuros potencialmente compatibles con petróleo. Se requiere confirmación operativa antes de reportar un derrame.',
     indicators: [{ color: 'bg-red-500', label: 'Retorno oscuro potencialmente compatible con petróleo' }, { color: 'bg-sky-800', label: 'Fondo acuático SAR' }],
   },
@@ -209,9 +209,13 @@ export const INDICATORS: IndicatorDefinition[] = [
     name: 'Chlorophyll-a',
     icon: Sprout,
     layer: 'CHLA',
-    description: 'The configured CHLA layer is retained as a qualitative screening view of spatial patterns potentially related to chlorophyll-a. It must not be interpreted as a concentration map until the provider supplies its evalscript, input bands, preprocessing level, coefficients, palette mapping, calibration domain, and local validation evidence.',
-    implementationNote: 'Compared with the published Ulyssys benchmark, Oracular does not claim MCI equivalence or calibrated chlorophyll-a concentration because the remote CHLA evalscript is not exposed. Oracular improvements are therefore traceability and delivery safeguards: no fabricated numeric scale, no inversion of rendered RGB into point concentrations, an acquisition timestamp, latest-request-only WMS loading, and atomic reveal of the completed tile mosaic. These improve scientific honesty and map reliability, not the undisclosed spectral algorithm.',
-    quote: 'Scientific compliance review — Ulyssys is a qualitative MCI benchmark for Sentinel-2, using B05 relative to a B04–B06 baseline and a default −0.005 to 0.05 display interval. The configured provider CHLA method is undisclosed, so algorithmic equivalence and quantitative values remain unverified.',
+    render: {
+      layer: 'CHLA',
+      evalscript: chlorophyllMciEvalscript,
+    },
+    description: 'Qualitative Chlorophyll-a view based on the Ulyssys Maximum Chlorophyll Index (MCI) for Sentinel-2. The −0.005 to 0.05 scale is an MCI spectral-contrast index, not a concentration in mg/m³. An NDWI + Hollstein water mask and CLM cloud guard darken land, clouds, and surfaces not accepted as water.',
+    implementationNote: 'Oracular adapted the supplied evalscript to a VERSION=3 WMS request and isolated its Sentinel-2 MCI branch: TSS blending is disabled so every displayed color remains traceable to one index. The published Ulyssys formula, domain, and palette are preserved, the collection CLM cloud guard is added, and latest-request-only loading remains active. MCI is not a concentration; conversion to mg/m³ requires regional calibration and in-situ validation.',
+    quote: 'Ulyssys Sentinel-2 MCI implementation: a qualitative spectral-contrast indicator associated with surface chlorophyll, not a calibrated concentration.',
     citation: {
       label: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
       href: 'https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/ulyssys_water_quality_viewer/',
@@ -240,16 +244,12 @@ export const INDICATORS: IndicatorDefinition[] = [
     type: 'discrete',
     layer: 'OIL-SPILL-SAR',
     acquisitionCollection: 'sentinel-1',
-    render: {
-      layer: 'INFRAR',
-      evalscript: oilSpillSarEvalscript,
-    },
     indicators: [
       { color: 'bg-red-500', label: 'Potential oil-like dark return' },
       { color: 'bg-sky-800', label: 'SAR water background' },
     ],
-    description: 'Sentinel-1 GRD VV/VH screening for potential marine oil-like dark returns in open water and coastal zones. The first stage rejects high-backscatter non-water pixels; the second highlights very low VV returns. Red areas are candidates for review, not confirmed petroleum.',
-    implementationNote: 'Oracular converts calibrated Sentinel-1 VV and VH linear power to decibels, then applies the published dual-polarization permanent-water limits of VV ≤ −15 dB and VH ≤ −22.9 dB with logical AND before evaluating oil-like returns. This stricter first stage reduces land and urban false positives. Rejected surfaces use the shared dark mask; accepted water uses a darker, low-opacity blue so the natural basemap remains visible; candidates at or below −25 dB VV remain red. This fixed threshold is a screening baseline, not the YOLOv4 detector described by Yang et al. Oil-spill look-alikes—including low wind areas, wave fronts, biogenic films, rain cells, radar shadows, and processing artefacts—can produce similar dark returns. Every alert requires contextual review and preferably temporal, wind, AIS, or field confirmation.',
+    description: 'Contextual Sentinel-1 GRD VV/VH screening for potential marine oil-like dark returns in open water and coastal zones. Red is reserved for dark VV anomalies that pass the dual-polarization water gate, remain connected to marine water, and differ statistically from their local SAR background. Candidates require review and are not confirmed petroleum.',
+    implementationNote: 'Oracular verifies calibrated Sentinel-1 VV and VH linear power, converts both channels to decibels, and applies the published permanent-water limits of VV ≤ −15 dB and VH ≤ −22.9 dB. The improved client-side tile processor keeps only SAR water connected to the buffered tile boundary, then evaluates the published −25 dB VV oil-like threshold through a local CFAR guard/background window with a 1% Gaussian false-alarm baseline. Uniformly dark low-wind water therefore remains background unless it is also locally anomalous. This is a screening guard, not the full Yang et al. edge-growing detector; tile-edge topology, biogenic films, rain cells, wakes, fronts and radar artefacts can still create look-alikes. Every alert requires contextual, temporal, wind, AIS or field confirmation.',
     quote: 'Potential oil-like SAR dark returns. Operational confirmation is required before reporting an oil spill.',
     citation: {
       label: 'Yang et al. (2022) — Sentinel-1 SAR oil-spill detector',
