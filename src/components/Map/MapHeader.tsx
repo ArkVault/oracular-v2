@@ -58,7 +58,7 @@ export function MapHeader({
   const showDatePicker = activeOverlay === 'dates';
   const showSensorMenu = activeOverlay === 'sensors';
   const showSearch = activeOverlay === 'search';
-  const [showDeveloperAccess, setShowDeveloperAccess] = React.useState(false);
+  const showDeveloperAccess = activeOverlay === 'account';
   const [developerPassphrase, setDeveloperPassphrase] = React.useState('');
   const [developerAuthenticated, setDeveloperAuthenticated] = React.useState(false);
   const [developerError, setDeveloperError] = React.useState(false);
@@ -99,6 +99,9 @@ export function MapHeader({
       if (!target.closest('.sensor-menu-container') && !target.closest('.sensor-button')) {
         dispatchOverlay({ type: 'close', overlay: 'sensors' });
       }
+      if (!target.closest('.oracular-account-wrap')) {
+        dispatchOverlay({ type: 'close', overlay: 'account' });
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -130,11 +133,13 @@ export function MapHeader({
     if (!response?.ok) { setDeveloperError(true); return; }
     setDeveloperAuthenticated(true);
     setDeveloperPassphrase('');
+    dispatchOverlay({ type: 'close', overlay: 'account' });
   };
 
   const endDeveloperAccess = async () => {
     await fetch('/api/developer-session', { credentials: 'same-origin', method: 'DELETE' }).catch(() => undefined);
     setDeveloperAuthenticated(false);
+    dispatchOverlay({ type: 'close', overlay: 'account' });
   };
 
   return (
@@ -333,41 +338,42 @@ export function MapHeader({
           <button className={language === 'es' ? 'is-active' : ''} onClick={() => setLanguage('es')} type="button">ES</button>
           <button className={language === 'en' ? 'is-active' : ''} onClick={() => setLanguage('en')} type="button">EN</button>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="oracular-user"
-          aria-label={t('nav.account')}
-          aria-pressed={developerAuthenticated}
-          onClick={() => setShowDeveloperAccess(true)}
-        >
-          <UserRound />
-        </Button>
-      </div>
-      {showDeveloperAccess && (
-        <div className="oracular-developer-backdrop" role="presentation">
-          <Card className="oracular-developer-dialog" role="dialog" aria-label={t('access.title')}>
-            <button className="oracular-developer-dialog__close" onClick={() => setShowDeveloperAccess(false)} aria-label={t('access.close')}><X /></button>
-            <div className="oracular-popover__eyebrow">Oracular</div>
-            <h2>{t('access.title')}</h2>
-            {developerAuthenticated ? (
-              <>
-                <p className="oracular-developer-status">{t('access.active')}</p>
-                <button type="button" className="oracular-developer-submit" onClick={endDeveloperAccess}>{t('access.signOut')}</button>
-              </>
-            ) : (
-              <form onSubmit={submitDeveloperAccess}>
-                <p>{t('access.description')}</p>
-                <label htmlFor="developer-passphrase">{t('access.passphrase')}</label>
-                <input id="developer-passphrase" type="password" autoComplete="current-password" value={developerPassphrase} onChange={(event) => setDeveloperPassphrase(event.target.value)} required />
-                {developerError && <p className="oracular-developer-error" role="alert">{t('access.invalid')}</p>}
-                <button type="submit" className="oracular-developer-submit">{t('access.signIn')}</button>
-              </form>
-            )}
-          </Card>
+        <div className="oracular-account-wrap">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={`oracular-user account-button ${showDeveloperAccess ? 'is-active' : ''}`}
+            aria-label={t('nav.account')}
+            aria-expanded={showDeveloperAccess}
+            aria-pressed={developerAuthenticated}
+            onClick={() => dispatchOverlay({ type: 'toggle', overlay: 'account' })}
+          >
+            <UserRound />
+          </Button>
+          {showDeveloperAccess && (
+            <Card className="oracular-popover oracular-developer-popover" role="dialog" aria-label={t('access.title')}>
+              <button className="oracular-developer-dialog__close" onClick={() => dispatchOverlay({ type: 'close', overlay: 'account' })} aria-label={t('access.close')}><X /></button>
+              <div className="oracular-popover__eyebrow">Oracular</div>
+              <h2>{t('access.title')}</h2>
+              {developerAuthenticated ? (
+                <div className="oracular-developer-authenticated">
+                  <p className="oracular-developer-status">{t('access.active')}</p>
+                  <button type="button" className="oracular-developer-submit" onClick={endDeveloperAccess}>{t('access.signOut')}</button>
+                </div>
+              ) : (
+                <form onSubmit={submitDeveloperAccess}>
+                  <p>{t('access.description')}</p>
+                  <label htmlFor="developer-passphrase">{t('access.passphrase')}</label>
+                  <input id="developer-passphrase" type="password" autoComplete="current-password" value={developerPassphrase} onChange={(event) => setDeveloperPassphrase(event.target.value)} required />
+                  {developerError && <p className="oracular-developer-error" role="alert">{t('access.invalid')}</p>}
+                  <button type="submit" className="oracular-developer-submit">{t('access.signIn')}</button>
+                </form>
+              )}
+            </Card>
+          )}
         </div>
-      )}
+      </div>
     </nav>
   );
 }

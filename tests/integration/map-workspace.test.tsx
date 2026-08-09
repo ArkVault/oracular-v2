@@ -193,6 +193,71 @@ describe('Map workspace integration', () => {
     expect(screen.queryByRole('button', { name: 'Dashboard' })).toBeNull();
   });
 
+  it('should keep developer access compact and close it before opening another header control', async () => {
+    // ARRANGE
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      json: async () => ({ authenticated: true }),
+      ok: true,
+      text: async () => '<WMS_Capabilities />',
+    }));
+    render(<Map services={createTestServices([ACQUISITION_FIXTURE])} />);
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const developerAccess = await screen.findByRole('dialog', { name: 'Developer access' });
+
+    // ASSERT
+    expect(developerAccess).toHaveClass('oracular-developer-popover');
+    expect(document.querySelector('.oracular-developer-backdrop')).toBeNull();
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: 'Dates' }));
+
+    // ASSERT
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Available acquisition dates' })).toBeVisible();
+
+    // ACT + ASSERT — sensors
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.queryByRole('dialog', { name: 'Available acquisition dates' })).toBeNull();
+    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Sensors' }));
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Available sensors' })).toBeVisible();
+
+    // ACT + ASSERT — search
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.queryByRole('dialog', { name: 'Available sensors' })).toBeNull();
+    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    expect(screen.getByPlaceholderText('Search places...')).toBeVisible();
+  });
+
+  it('should collapse developer access after a successful sign-in', async () => {
+    // ARRANGE
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        json: async () => ({ authenticated: false }),
+        ok: true,
+      })
+      .mockResolvedValueOnce({ ok: true }));
+    render(<Map services={createTestServices()} />);
+
+    // ACT
+    const account = screen.getByRole('button', { name: 'Account' });
+    fireEvent.click(account);
+    const passphrase = await screen.findByLabelText('Developer passphrase');
+    fireEvent.change(passphrase, { target: { value: 'private-test-passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enable unlimited testing' }));
+
+    // ASSERT
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
+    });
+    expect(account).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('should use a distinct semantic icon for every primary indicator', () => {
     // ARRANGE + ACT
     render(<Map services={createTestServices()} />);

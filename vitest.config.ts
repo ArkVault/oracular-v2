@@ -16,6 +16,7 @@ export default defineConfig({
     include: [
       'src/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',
+      'tests/api/**/*.test.ts',
       'api/**/*.test.ts',
     ],
     coverage: {

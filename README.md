@@ -194,8 +194,8 @@ npm run check
 ```
 
 The command executes linting, TypeScript validation, the coverage suite and a
-production build. The latest verified local checkpoint contains 23 test files
-and 126 tests. Coverage for the configured modules is 98.67 percent statements,
+production build. The latest verified local checkpoint contains 24 test files
+and 130 tests. Coverage for the configured modules is 98.67 percent statements,
 94.93 percent branches, 100 percent functions and 98.64 percent lines.
 
 Coverage thresholds currently apply to the configured domain and provider
@@ -221,8 +221,8 @@ Detailed strategy and results are available in
 ### Bundle strategy
 
 The production build uses feature-level lazy boundaries for optional tooling.
-The latest verified main JavaScript bundle is approximately 483.48 kB
-(150.40 kB gzip). Leaflet Draw remains deferred as a separate 67.77 kB chunk
+The latest verified main JavaScript bundle is approximately 483.78 kB
+(150.43 kB gzip). Leaflet Draw remains deferred as a separate 67.77 kB chunk
 (14.55 kB gzip) plus its CSS. File hashes and exact sizes vary between builds;
 these measurements are a local checkpoint, not a permanent performance budget.
 

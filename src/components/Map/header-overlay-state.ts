@@ -1,4 +1,4 @@
-export type HeaderOverlay = 'dates' | 'sensors' | 'search' | null;
+export type HeaderOverlay = 'account' | 'dates' | 'sensors' | 'search' | null;
 
 type VisibleHeaderOverlay = Exclude<HeaderOverlay, null>;
 
