@@ -9,6 +9,10 @@ const mapHarness = vi.hoisted(() => {
       containerPoint?: { x: number; y: number };
     }) => Promise<void>),
     map: {} as Record<string, unknown>,
+    contextualOilSpillProps: null as null | {
+      layerKey: string;
+      selectedAcquisitionDate?: string;
+    },
     wmsLoadHandler: null as null | (() => void),
   };
 
@@ -107,6 +111,19 @@ vi.mock('../../src/components/Map/DrawControl', () => ({
   DrawControl: () => <div data-testid="draw-control" />,
 }));
 
+vi.mock('../../src/components/Map/ContextualOilSpillLayer', () => ({
+  ContextualOilSpillLayer: ({
+    layerKey,
+    selectedAcquisitionDate,
+  }: {
+    layerKey: string;
+    selectedAcquisitionDate?: string;
+  }) => {
+    mapHarness.contextualOilSpillProps = { layerKey, selectedAcquisitionDate };
+    return <div data-testid="contextual-oil-spill-layer" />;
+  },
+}));
+
 import { Map } from '../../src/components/Map/Map';
 import App from '../../src/App';
 import { createAppServices, type AppServices } from '../../src/app/services';
@@ -143,6 +160,7 @@ describe('Map workspace integration', () => {
       setItem: vi.fn((key: string, value: string) => storedPreferences.set(key, value)),
     });
     mapHarness.clickHandler = null;
+    mapHarness.contextualOilSpillProps = null;
     mapHarness.wmsLoadHandler = null;
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.stubGlobal(
@@ -520,7 +538,7 @@ describe('Map workspace integration', () => {
     );
   });
 
-  it('should render Sentinel-1 oil-like dark-return candidates only over SAR water', async () => {
+  it('should render Sentinel-1 oil-like candidates with contextual marine screening', async () => {
     // ARRANGE
     vi.useFakeTimers();
     render(<Map services={createTestServices()} />);
@@ -532,19 +550,16 @@ describe('Map workspace integration', () => {
     });
 
     // ASSERT
-    const layer = screen.getByTestId('wms-layer');
-    expect(layer).toHaveAttribute('data-layers', 'INFRAR');
-    expect(layer).not.toHaveAttribute('data-maxcc');
-    const source = atob(layer.getAttribute('data-evalscript') ?? '');
-    expect(source).toContain("input: [{ bands: [\"VV\", \"VH\", \"dataMask\"]");
-    expect(source).toContain('vvDb <= oilLikeVvThresholdDb');
+    expect(screen.getByTestId('contextual-oil-spill-layer')).toBeVisible();
+    expect(screen.queryByTestId('wms-layer')).not.toBeInTheDocument();
+    expect(mapHarness.contextualOilSpillProps?.layerKey).toContain('OIL-SPILL-SAR');
 
     const details = screen.getByRole('complementary', { name: 'Oil Spill Detection details' });
     expect(within(details).getByText('Potential oil-like dark return')).toBeVisible();
     expect(within(details).getByText('SAR water background')).toBeVisible();
     expect(within(details).getByRole('note', {
       name: 'Oracular improved index implementation',
-    })).toHaveTextContent(/look-alikes.*low wind.*wave fronts/i);
+    })).toHaveTextContent(/local CFAR.*low-wind water.*locally anomalous/i);
     expect(within(details).getByRole('link', {
       name: 'Yang et al. (2022) — Sentinel-1 SAR oil-spill detector',
     })).toHaveAttribute('href', 'https://doi.org/10.1080/01431161.2022.2109445');
@@ -854,7 +869,7 @@ describe('Map workspace integration', () => {
     expect(acquisitionBadge).toHaveTextContent('17:38:17 UTC');
   });
 
-  it('should mount the CHLA WMS layer when Chlorophyll-a is selected', async () => {
+  it('should mount the Ulyssys MCI evalscript when Chlorophyll-a is selected', async () => {
     // ARRANGE
     vi.useFakeTimers();
     render(<Map services={createTestServices()} />);
@@ -872,17 +887,24 @@ describe('Map workspace integration', () => {
     // ASSERT
     expect(screen.getByRole('heading', { name: 'Chlorophyll-a' })).toBeVisible();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', 'CHLA');
+    const encodedEvalscript = screen.getByTestId('wms-layer').getAttribute('data-evalscript');
+    expect(encodedEvalscript).toBeTruthy();
+    const evalscript = atob(encodedEvalscript ?? '');
+    expect(evalscript).toContain('Ulyssys Water Quality Viewer');
+    expect(evalscript).toContain('sample.B05 - MCI_RED_WEIGHT * sample.B04');
+    expect(evalscript).not.toContain('tssIndex');
     const details = screen.getByRole('complementary', { name: 'Chlorophyll-a details' });
     expect(within(details).getByRole('button', { name: 'Close details' })).toBeVisible();
-    expect(within(details).getByText('Calibrated measurement range unavailable')).toBeVisible();
-    expect(within(details).getByText(/provider palette and scientific value mapping/i)).toBeVisible();
-    expect(within(details).queryByLabelText('Chlorophyll-a color scale')).toBeNull();
+    expect(within(details).queryByText('Calibrated measurement range unavailable')).toBeNull();
+    expect(within(details).getByLabelText('Chlorophyll-a color scale')).toBeVisible();
+    expect(within(details).getByText('-0.005 MCI')).toBeVisible();
+    expect(within(details).getByText('0.05 MCI')).toBeVisible();
     const implementationNote = within(details).getByRole('note', {
       name: 'Oracular improved index implementation',
     });
-    expect(implementationNote).toHaveTextContent('does not claim MCI equivalence');
-    expect(implementationNote).toHaveTextContent('latest-request-only');
-    expect(within(details).getByText(/Ulyssys is a qualitative MCI benchmark/i)).toBeVisible();
+    expect(implementationNote).toHaveTextContent('TSS blending is disabled');
+    expect(implementationNote).toHaveTextContent('not a concentration');
+    expect(within(details).getByText(/MCI spectral-contrast index/i)).toBeVisible();
     expect(within(details).getByRole('link', {
       name: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
     })).toHaveAttribute(
@@ -954,7 +976,7 @@ describe('Map workspace integration', () => {
   it.each([
     ['Chlorophyll-a', 'CHLA', 'CHLA', ['0.80635', '0.760724', '0.607419']],
   ])(
-    'should keep the uncalibrated %s rendered channels unavailable',
+    'should keep the %s rendered channels unavailable as a point scalar',
     async (parameter, layer, renderedLayer, renderedChannels) => {
     // ARRANGE
     vi.useFakeTimers();
@@ -986,7 +1008,8 @@ describe('Map workspace integration', () => {
 
     // ASSERT
     const pointDetails = screen.getByRole('region', { name: 'Selected point details' });
-    expect(within(pointDetails).getByText(/Region-specific calibration data may be supplied/)).toBeVisible();
+    expect(within(pointDetails).getByText(/documented qualitative index palette/)).toBeVisible();
+    expect(within(pointDetails).getByText(/must not be interpreted as chlorophyll-a concentration/)).toBeVisible();
     expect(within(pointDetails).getByText('Unavailable')).toBeVisible();
     expect(within(pointDetails).queryByText('Out of the area of interest')).toBeNull();
     expect(screen.getByTestId('wms-layer')).toHaveAttribute('data-layers', renderedLayer);

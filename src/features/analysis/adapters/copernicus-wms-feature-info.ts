@@ -61,6 +61,15 @@ function buildPointBbox({ lat, lng }: FeatureInfoQuery['point']): string {
     .join(',');
 }
 
+function isCompatibleProviderUnit(
+  layer: string,
+  displayUnit: string,
+  providerUnit: string | undefined,
+): boolean {
+  return providerUnit === displayUnit
+    || (layer === 'CHLA' && providerUnit === 'mg/m³');
+}
+
 export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
   private readonly fetcher: typeof fetch;
 
@@ -127,7 +136,7 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
       definition !== undefined &&
       explicitValue !== undefined &&
       explicitValue >= definition.minimum &&
-      providerUnit === definition.unit &&
+      isCompatibleProviderUnit(query.layer, definition.unit, providerUnit) &&
       method !== undefined;
     const dataMask = toFiniteNumber(properties.dataMask);
     const isOutOfArea = dataMask === 0;
@@ -140,7 +149,7 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
     return {
       parameter: query.layer,
       value: scalarIsValid ? explicitValue : null,
-      ...(scalarIsValid ? { unit: definition.unit } : {}),
+      ...(scalarIsValid ? { unit: providerUnit } : {}),
       valueSource: scalarIsValid ? 'provider-scalar' : 'unavailable',
       isEstimate: false,
       ...(scalarIsValid ? { method } : {}),
@@ -154,7 +163,9 @@ export class CopernicusWmsFeatureInfoProvider implements FeatureInfoProvider {
       ...(!scalarIsValid && !isOutOfArea
         ? {
             message: outputValues.length >= 3
-              ? 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.'
+              ? definition?.calibrationStatus === 'configured'
+                ? 'The visualization has a documented qualitative index palette, but this point response contains rendered color channels rather than the underlying scalar MCI value. It must not be interpreted as chlorophyll-a concentration.'
+                : 'Region-specific calibration data may be supplied to improve accuracy and support more precise concentration estimates. Until those data and the layer\'s scientific value-to-color mapping are available, results should be interpreted qualitatively.'
               : 'A scientifically traceable scalar is not available for this point.',
           }
         : isOutOfArea
