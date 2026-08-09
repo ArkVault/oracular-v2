@@ -85,7 +85,10 @@ export function AnalysisDetailsPanel({
               <div className="oracular-continuous-legend__values">
                 {[...measurement.stops].reverse().map((stop) => (
                   <span key={stop.value}>
-                    {formatMeasurementValue(stop.value)} {measurement.unit}
+                    {formatMeasurementValue(
+                      stop.value,
+                      measurement.unit === 'MCI' ? 4 : 2,
+                    )} {measurement.unit}
                   </span>
                 ))}
               </div>
@@ -141,9 +144,9 @@ export function AnalysisDetailsPanel({
   );
 }
 
-function formatMeasurementValue(value: number): string {
+function formatMeasurementValue(value: number, maximumFractionDigits: number): string {
   return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 2,
+    maximumFractionDigits,
     useGrouping: false,
   }).format(value);
 }

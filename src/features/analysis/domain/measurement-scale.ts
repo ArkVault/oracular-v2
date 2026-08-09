@@ -23,10 +23,22 @@ export type MeasurementDefinition =
 
 const MEASUREMENT_DEFINITIONS: Readonly<Record<string, MeasurementDefinition>> = {
   CHLA: {
-    parameter: 'Chlorophyll-a',
-    unit: 'mg/m³',
-    minimum: 0,
-    calibrationStatus: 'unavailable',
+    parameter: 'Chlorophyll-a MCI',
+    unit: 'MCI',
+    minimum: -0.005,
+    maximum: 0.05,
+    calibrationStatus: 'configured',
+    method: 'Ulyssys Sentinel-2 Maximum Chlorophyll Index',
+    methodVersion: 'ulyssys-s2-mci-v1',
+    algorithmReference:
+      'https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/ulyssys_water_quality_viewer/',
+    stops: [
+      { value: -0.005, color: '#01042a' },
+      { value: 0.0133333333, color: '#006a4e' },
+      { value: 0.0225, color: '#7cfa00' },
+      { value: 0.0316666667, color: '#f1d71b' },
+      { value: 0.05, color: '#ff0000' },
+    ],
   },
   'WATER-QUALITY': {
     parameter: 'Water Quality',

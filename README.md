@@ -16,8 +16,8 @@ a production scientific system.
   at Ciudad del Carmen, Mexico.
 - Copernicus Sentinel-2 visualization for natural color, qualitative
   chlorophyll-a, CDOM, turbidity, total suspended solids and forest-fire layers.
-- Sentinel-1 SAR screening views for potential marine oil-like dark returns and
-  positive-contrast Sargassum candidates.
+- Sentinel-1 SAR screening views for contextual marine oil-like dark anomalies
+  and positive-contrast Sargassum candidates.
 - Place search through a typed Nominatim adapter.
 - A dismissible workflow guide covering place search, acquisition date,
   indicator selection and readiness.
@@ -31,8 +31,10 @@ a production scientific system.
   provider result state in the right-side panel.
 - Parameter-specific legends, scientific citations and explicit implementation
   limitations in the right-side panel.
-- Versioned WMS evalscripts for CDOM, turbidity, total suspended solids, oil-spill
-  screening and Sargassum screening under `sentinel-hub/evalscripts/`.
+- Versioned WMS evalscripts for CDOM, turbidity, total suspended solids,
+  Sentinel-1 VV/VH source encoding and Sargassum screening under
+  `sentinel-hub/evalscripts/`. Oil-spill candidates are classified from the
+  encoded SAR source by a buffered client-side CFAR processor.
 - A latest-request-wins WMS policy that discards superseded indicator loads,
   avoids offscreen analysis buffering and reveals a mosaic only when its current
   tile grid is complete.
@@ -248,12 +250,14 @@ configuration or public deployment behavior is production-ready.
 - Google authentication has not yet been implemented.
 - The current Copernicus configuration may return rendered channels instead of
   scalar scientific measurements for some parameters.
-- The configured remote CHLA layer does not expose its evalscript, formula or
-  calibration, so it remains a qualitative view and is not claimed to be
-  equivalent to the Ulyssys MCI implementation.
-- Per-pixel optical or SAR masks cannot guarantee continuous hydrographic or
-  coast-only topology without Sentinel-2 Level-2A classification or an external
-  water/ocean boundary.
+- Chlorophyll-a uses a versioned Sentinel-2 Ulyssys MCI evalscript with its
+  documented −0.005 to 0.05 palette. MCI remains a qualitative spectral index,
+  not an mg/m³ concentration; quantitative conversion requires regional in-situ
+  calibration.
+- The oil-spill view now rejects isolated dark regions with buffered
+  edge-connected SAR-water topology and local CFAR contrast, but tile-local
+  connectivity is not a global ocean polygon. Guaranteed coast-only topology
+  still requires an external water/ocean boundary.
 - Drawing is available, but the current KML export remains a placeholder and is
   not suitable for operational use.
 - Automated end-to-end coverage against live map providers is still pending.
