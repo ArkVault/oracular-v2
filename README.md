@@ -38,9 +38,7 @@ a production scientific system.
 - A latest-request-wins WMS policy that discards superseded indicator loads,
   avoids offscreen analysis buffering and reveals a mosaic only when its current
   tile grid is complete.
-- A production fair-use gate allowing one activation of each indicator per IP
-  address in a rolling 24-hour window; Natural Color, search and date selection do not
-  consume the allowance.
+- Unrestricted indicator access during the current testing phase.
 - A blocking loader tied to the real WMS loading lifecycle rather than a fixed
   visual delay.
 - Explicit out-of-area and no-data states when a point cannot be evaluated.
@@ -133,7 +131,7 @@ context.
 | Interface | Tailwind CSS, shadcn conventions, Radix Slot, Lucide icons |
 | Dates | React DayPicker, date-fns |
 | Testing | Vitest, Testing Library, jsdom, V8 coverage |
-| Hosting | Vercel Functions and static hosting; Upstash Redis for fair-use state |
+| Hosting | Vercel static hosting |
 
 ## Local development
 
@@ -170,19 +168,10 @@ browser bundle and must never contain secrets.
 Custom provider domains must also be added explicitly to the Content Security
 Policy in `vercel.json` before deployment.
 
-Production requires private `ANALYSIS_RATE_LIMIT_SECRET` and
-`DEVELOPER_SESSION_SECRET` values of at least 32 characters plus a private
-`DEVELOPER_ACCESS_PASSPHRASE`. The Vercel Function transforms IP addresses into
-keyed identifiers before Upstash stores rate-limit state. General visitors may
-run each indicator once per IP in a rolling 24-hour window. An authenticated
-developer session bypasses the quota for 12 hours; its cookie is signed,
-HttpOnly, Secure and SameSite=Strict. Local Vite development is unlimited.
-
-Install Upstash Redis from the Vercel Marketplace and connect it to the project.
-The integration injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`; direct
-Upstash connections may instead provide `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN`. The Function accepts either pair, and all four
-values must remain server-only.
+Indicator access is currently unrestricted in local and deployed environments.
+The application no longer performs per-IP quota checks or requires a developer
+passphrase. Direct public provider tile URLs remain subject to the provider's
+own service limits.
 
 The remaining variables in `.env.example` belong to legacy local tooling and
 are not required by the browser application.
@@ -237,9 +226,7 @@ single-page application fallback and security headers.
 2. Configure `main` as the production branch and `npm run build` as the build
    command.
 3. Publish the generated `dist/` directory.
-4. Install Upstash Redis from Vercel Marketplace and connect it to this project.
-5. Add the three private secrets above in Vercel Project Settings → Environment Variables.
-6. Use `development` and pull requests for Preview deployments, and `main` for production.
+4. Use `development` and pull requests for Preview deployments, and `main` for production.
 
 Preview validation and production readiness are separate release gates. A
 successful local build does not by itself establish that OAuth, provider
@@ -261,10 +248,9 @@ configuration or public deployment behavior is production-ready.
 - Drawing is available, but the current KML export remains a placeholder and is
   not suitable for operational use.
 - Automated end-to-end coverage against live map providers is still pending.
-- The demo gate allows each public IP to activate each distinct indicator once
-  per rolling 24-hour window. Direct public provider tile URLs remain subject to
-  provider quotas. Production observability and authenticated per-user quotas
-  require further hardening.
+- Indicator access is unrestricted during testing. Direct public provider tile
+  URLs remain subject to provider quotas. Production observability and any
+  future authenticated per-user controls require further hardening.
 
 ## Roadmap
 
