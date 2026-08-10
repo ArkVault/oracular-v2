@@ -7,7 +7,6 @@ import { appConfig } from '@/app/config';
 import { appServices, type AppServices } from '@/app/services';
 import { ParameterLoader } from '@/components/UI/ParameterLoader';
 import type { PlaceSearchResult } from '@/features/place-search/domain/place';
-import { useI18n } from '@/i18n/i18n';
 
 import { AnalysisDetailsPanel } from './AnalysisDetailsPanel';
 import { useAcquisitionDates } from './hooks/use-acquisition-dates';
@@ -62,9 +61,7 @@ export function Map({
   zoom = 10,
   services = appServices,
 }: MapProps) {
-  const { locale, t } = useI18n();
   const mapRef = React.useRef<L.Map | null>(null);
-  const analysisAccessAbortRef = React.useRef<AbortController | undefined>(undefined);
   const indicatorLoadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -75,7 +72,6 @@ export function Map({
   );
   const [selectedLayer, setSelectedLayer] = React.useState('');
   const [isIndicatorLoading, setIsIndicatorLoading] = React.useState(false);
-  const [analysisAccessMessage, setAnalysisAccessMessage] = React.useState<string>();
   const [drawMode, setDrawMode] = React.useState<DrawMode>(null);
   const [drawingToolsActivated, setDrawingToolsActivated] = React.useState(false);
   const [clearDrawingsSignal, setClearDrawingsSignal] = React.useState(0);
@@ -105,7 +101,6 @@ export function Map({
     if (indicatorLoadTimeoutRef.current) {
       clearTimeout(indicatorLoadTimeoutRef.current);
     }
-    analysisAccessAbortRef.current?.abort();
   }, []);
 
   const handleIndicatorSelect = (indicator: IndicatorDefinition) => {
@@ -115,14 +110,10 @@ export function Map({
     if (indicatorLoadTimeoutRef.current) {
       clearTimeout(indicatorLoadTimeoutRef.current);
     }
-    analysisAccessAbortRef.current?.abort();
-    analysisAccessAbortRef.current = undefined;
-
     // Unmount the active WMS layer immediately so superseded network work cannot
     // remain visible or be paired with the newly selected indicator config.
     setSelectedLayer('');
     setIsIndicatorLoading(true);
-    setAnalysisAccessMessage(undefined);
     setSelectedIndicator(indicator);
     setIsDetailVisible(true);
     pointAnalysis.clear();
@@ -135,28 +126,8 @@ export function Map({
         return;
       }
 
-      const controller = new AbortController();
-      analysisAccessAbortRef.current = controller;
-      void services.analysisAccess.consume(indicator.name, controller.signal)
-        .then(() => {
-          if (controller.signal.aborted) return;
-          setSelectedLayer(indicator.layer || '');
-          if (shouldAdvanceWorkflow) setWorkflowGuideStep('ready');
-        })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
-          setIsIndicatorLoading(false);
-          setSelectedIndicator(INDICATORS[0]);
-          const resetAt = getAnalysisLimitResetAt(error);
-          setAnalysisAccessMessage(resetAt
-            ? t('limit.reached', { time: formatAnalysisResetAt(resetAt, locale) })
-            : t('limit.unavailable'));
-        })
-        .finally(() => {
-          if (analysisAccessAbortRef.current === controller) {
-            analysisAccessAbortRef.current = undefined;
-          }
-        });
+      setSelectedLayer(indicator.layer || '');
+      if (shouldAdvanceWorkflow) setWorkflowGuideStep('ready');
     }, appConfig.indicatorLoadingDelayMs);
   };
 
@@ -247,12 +218,6 @@ export function Map({
         }}
       />
 
-      {analysisAccessMessage && (
-        <div className="oracular-analysis-limit-alert" role="alert">
-          {analysisAccessMessage}
-        </div>
-      )}
-
       <MapCanvas
         center={center}
         clearDrawingsSignal={clearDrawingsSignal}
@@ -315,30 +280,4 @@ export function Map({
       <ParameterLoader isVisible={isIndicatorLoading || pointAnalysis.isLoading} />
     </div>
   );
-}
-
-function getAnalysisLimitResetAt(error: unknown): string | undefined {
-  if (
-    error instanceof Error
-    && error.name === 'AnalysisLimitExceededError'
-    && 'resetAt' in error
-    && typeof error.resetAt === 'string'
-  ) {
-    return error.resetAt;
-  }
-  return undefined;
-}
-
-function formatAnalysisResetAt(resetAt: string, locale: string): string {
-  if (locale === 'en-US') {
-    const timestamp = new Date(resetAt);
-    const day = String(timestamp.getUTCDate()).padStart(2, '0');
-    const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][timestamp.getUTCMonth()];
-    return `${day} ${month} ${timestamp.getUTCFullYear()} · ${timestamp.toISOString().slice(11, 16)} UTC`;
-  }
-  return new Intl.DateTimeFormat(locale, {
-    day: '2-digit', hour: '2-digit', hour12: false, minute: '2-digit',
-    month: 'short', timeZone: 'UTC', timeZoneName: 'short', year: 'numeric',
-  }).format(new Date(resetAt));
 }

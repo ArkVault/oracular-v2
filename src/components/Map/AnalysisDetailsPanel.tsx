@@ -1,4 +1,4 @@
-import { CalendarClock, Gauge, X } from 'lucide-react';
+import { CalendarClock, X } from 'lucide-react';
 
 import {
   createMeasurementGradient,
@@ -49,12 +49,6 @@ export function AnalysisDetailsPanel({
           <span>{t('detail.noTimestamp')}</span>
         )}
       </div>
-      {indicator.type === 'natural' && (
-        <div className="oracular-demo-limit-badge">
-          <Gauge aria-hidden="true" />
-          <span>{t('limit.demoBadge')}</span>
-        </div>
-      )}
       {pointInfo && (
         <PointInfoSection
           info={pointInfo}

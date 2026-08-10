@@ -139,12 +139,6 @@ const ACQUISITION_FIXTURE = {
 function createTestServices(acquisitions: AcquisitionDate[] = []): AppServices {
   return {
     ...createAppServices(),
-    analysisAccess: {
-      consume: vi.fn().mockResolvedValue({
-        remaining: 4,
-        resetAt: '2026-08-09T18:00:00.000Z',
-      }),
-    },
     acquisitionDates: {
       list: vi.fn().mockResolvedValue(acquisitions),
     },
@@ -186,7 +180,7 @@ describe('Map workspace integration', () => {
     expect(screen.getByRole('button', { name: 'Sensors' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Search' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Account' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Account' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Turn off workflow guide' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Turn off workflow guide' })).toHaveTextContent('Guide');
     expect(screen.getByRole('button', { name: 'Chlorophyll-a' })).toBeVisible();
@@ -209,71 +203,6 @@ describe('Map workspace integration', () => {
     expect(screen.getByRole('button', { name: 'Reset view' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Select Area' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Dashboard' })).toBeNull();
-  });
-
-  it('should keep developer access compact and close it before opening another header control', async () => {
-    // ARRANGE
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      json: async () => ({ authenticated: true }),
-      ok: true,
-      text: async () => '<WMS_Capabilities />',
-    }));
-    render(<Map services={createTestServices([ACQUISITION_FIXTURE])} />);
-
-    // ACT
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
-    const developerAccess = await screen.findByRole('dialog', { name: 'Developer access' });
-
-    // ASSERT
-    expect(developerAccess).toHaveClass('oracular-developer-popover');
-    expect(document.querySelector('.oracular-developer-backdrop')).toBeNull();
-
-    // ACT
-    fireEvent.click(screen.getByRole('button', { name: 'Dates' }));
-
-    // ASSERT
-    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Available acquisition dates' })).toBeVisible();
-
-    // ACT + ASSERT — sensors
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
-    expect(screen.queryByRole('dialog', { name: 'Available acquisition dates' })).toBeNull();
-    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Sensors' }));
-    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Available sensors' })).toBeVisible();
-
-    // ACT + ASSERT — search
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
-    expect(screen.queryByRole('dialog', { name: 'Available sensors' })).toBeNull();
-    expect(await screen.findByRole('dialog', { name: 'Developer access' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
-    expect(screen.getByPlaceholderText('Search places...')).toBeVisible();
-  });
-
-  it('should collapse developer access after a successful sign-in', async () => {
-    // ARRANGE
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({
-        json: async () => ({ authenticated: false }),
-        ok: true,
-      })
-      .mockResolvedValueOnce({ ok: true }));
-    render(<Map services={createTestServices()} />);
-
-    // ACT
-    const account = screen.getByRole('button', { name: 'Account' });
-    fireEvent.click(account);
-    const passphrase = await screen.findByLabelText('Developer passphrase');
-    fireEvent.change(passphrase, { target: { value: 'private-test-passphrase' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Enable unlimited testing' }));
-
-    // ASSERT
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Developer access' })).toBeNull();
-    });
-    expect(account).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('should use a distinct semantic icon for every primary indicator', () => {
@@ -324,13 +253,13 @@ describe('Map workspace integration', () => {
       .toHaveClass('oracular-detail-panel');
   });
 
-  it('should show only a concise demo-limit badge in Natural Color', () => {
+  it('should not show an analysis-limit badge in Natural Color', () => {
     // ARRANGE + ACT
     render(<Map services={createTestServices()} />);
     const details = screen.getByRole('complementary', { name: 'Natural Color details' });
 
     // ASSERT
-    expect(within(details).getByText('Demo · 1 analysis per indicator / 24h per IP')).toBeVisible();
+    expect(within(details).queryByText(/analysis per indicator/i)).toBeNull();
     expect(within(details).queryByRole('note', {
       name: 'Request efficiency and API safeguards',
     })).toBeNull();
@@ -385,8 +314,7 @@ describe('Map workspace integration', () => {
 
     // ACT + ASSERT — indicator
     expect(within(guide).getByText('Choose an indicator')).toBeVisible();
-    expect(within(guide).getByText(/1 analysis per indicator and IP address/i)).toBeVisible();
-    expect(within(guide).getByText(/rolling 24-hour window/i)).toBeVisible();
+    expect(within(guide).getByText(/indicator access is unrestricted/i)).toBeVisible();
     expect(spotlight).toHaveAttribute('data-step', 'indicators');
     expect(mapShell).toHaveClass('workflow-step-indicators');
     expect(within(guide).getByText('Step 3 of 4')).toBeVisible();
@@ -416,17 +344,10 @@ describe('Map workspace integration', () => {
     expect(window.localStorage.getItem('oracular.workflow-guide')).toBe('off');
   });
 
-  it('should block a repeated indicator analysis before mounting its WMS layer', async () => {
+  it('should mount an indicator without consuming an analysis allowance', async () => {
     // ARRANGE
     vi.useFakeTimers();
-    const services = createTestServices();
-    services.analysisAccess.consume = vi.fn().mockRejectedValue(
-      Object.assign(new Error('Analysis limit exceeded'), {
-        name: 'AnalysisLimitExceededError',
-        resetAt: '2026-08-09T13:00:00.000Z',
-      }),
-    );
-    render(<Map services={services} />);
+    render(<Map services={createTestServices()} />);
 
     // ACT
     fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
@@ -435,14 +356,8 @@ describe('Map workspace integration', () => {
     });
 
     // ASSERT
-    expect(services.analysisAccess.consume).toHaveBeenCalledWith(
-      'Chlorophyll-a',
-      expect.any(AbortSignal),
-    );
-    expect(screen.queryByTestId('wms-layer')).toBeNull();
-    expect(screen.queryByRole('status', { name: 'Analyzing satellite data' })).toBeNull();
-    expect(screen.getByRole('alert')).toHaveTextContent('This indicator was already used');
-    expect(screen.getByRole('alert')).toHaveTextContent('09 Aug 2026');
+    expect(screen.getByTestId('wms-layer')).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('should keep the workflow guide off after the user dismisses it', () => {
@@ -771,15 +686,7 @@ describe('Map workspace integration', () => {
       }), { status: 200 }),
     ));
     vi.useFakeTimers();
-    render(<Map services={{
-      ...createAppServices(),
-      analysisAccess: {
-        consume: vi.fn().mockResolvedValue({
-          remaining: 4,
-          resetAt: '2026-08-09T18:00:00.000Z',
-        }),
-      },
-    }} />);
+    render(<Map services={createAppServices()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Chlorophyll-a' }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3_000);
