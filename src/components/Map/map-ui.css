@@ -937,6 +937,16 @@
   line-height: 1.4;
 }
 
+.oracular-qualitative-disclaimer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  color: rgb(255 255 255 / 48%);
+  font-family: var(--oracular-font-body);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .oracular-legend-card {
   padding: 0;
   border: 0;

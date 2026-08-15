@@ -256,8 +256,9 @@ configuration or public deployment behavior is production-ready.
 
 The next planned product slices are:
 
-1. Complete scalar scientific analysis through a validated Copernicus output or
-   Statistical API integration.
+1. Calibrate each water-quality evalscript individually with primary literature
+   and regional in-situ data, then expose an approximate, traceable
+   concentration when the user clicks a valid pixel.
 2. Add Google authentication behind a typed authentication contract.
 3. Extend acquisition selection with stable scene identity and richer metadata.
 4. Add automated end-to-end coverage for authentication, calendar, WMS loading

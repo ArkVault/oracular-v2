@@ -134,6 +134,15 @@ export function AnalysisDetailsPanel({
         )}
       </div>
       <p className="oracular-reference">{displayIndicator.quote}</p>
+      {indicator.type !== 'natural' && (
+        <p
+          className="oracular-qualitative-disclaimer"
+          role="note"
+          aria-label="Qualitative result limitation"
+        >
+          Results are qualitative and require regional calibration data.
+        </p>
+      )}
     </aside>
   );
 }
