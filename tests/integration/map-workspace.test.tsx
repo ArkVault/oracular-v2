@@ -335,6 +335,9 @@ describe('Map workspace integration', () => {
       name: 'Request efficiency and API safeguards',
     })).toBeNull();
     expect(within(details).queryByText(/create one active analysis request/i)).toBeNull();
+    expect(within(details).queryByText(
+      'Results are qualitative and require regional calibration data.',
+    )).toBeNull();
   });
 
   it('should guide place search, date, and indicator selection and allow the guide to be toggled', async () => {
@@ -905,6 +908,11 @@ describe('Map workspace integration', () => {
     expect(implementationNote).toHaveTextContent('TSS blending is disabled');
     expect(implementationNote).toHaveTextContent('not a concentration');
     expect(within(details).getByText(/MCI spectral-contrast index/i)).toBeVisible();
+    expect(within(details).getByRole('note', {
+      name: 'Qualitative result limitation',
+    })).toHaveTextContent(
+      'Results are qualitative and require regional calibration data.',
+    );
     expect(within(details).getByRole('link', {
       name: 'Zlinszky & Padányi-Gulyás (2020) — Ulyssys Water Quality Viewer',
     })).toHaveAttribute(
