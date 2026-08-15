@@ -1,15 +1,22 @@
 # Oracular V2 — Roadmap de estabilización y evolución
 
-**Versión:** 1.0
-**Fecha:** 2026-08-01
+**Versión:** 1.1
+**Fecha:** 2026-08-15
 **Estado:** Draft para validación
-**Horizonte propuesto:** 8–12 semanas para un equipo pequeño
+**Horizonte propuesto:** 8–12 semanas para estabilización, más ciclos de calibración por parámetro
 
 ## 1. Resumen ejecutivo
 
 Oracular V2 es una SPA geoespacial para explorar imágenes de Copernicus y analizar indicadores ambientales sobre un mapa. Antes de ampliar el producto, el proyecto debe asegurar la integridad de los datos, reducir deuda técnica, incorporar pruebas, corregir la experiencia responsive y establecer una entrega reproducible en Vercel.
 
 Después de esa estabilización, el roadmap incorpora autenticación con Google y un calendario que únicamente permita seleccionar fechas con imágenes Copernicus cuya nubosidad reportada sea inferior al 10%.
+
+Una fase posterior convertirá, parámetro por parámetro, los resultados
+cualitativos en estimaciones cuantitativas regionales. El usuario proporcionará
+los evalscripts; para cada modelo se deberán reunir datos regionales de
+calibración y contrastar el algoritmo con literatura científica primaria y
+observaciones in situ antes de mostrar una concentración aproximada al hacer
+clic sobre un área o píxel.
 
 ## 2. Problema actual
 
@@ -32,6 +39,7 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 | Controlar acceso | Login Google y rutas protegidas | 100% de vistas privadas |
 | Asegurar calidad de imagen | Fechas habilitadas con nubosidad >= 10% | 0 |
 | Entregar de forma reproducible | Preview de Vercel por cambio aprobado | 100% |
+| Habilitar resultados cuantitativos | Parámetros que muestran concentración sin calibración regional validada | 0 |
 
 ## 4. Usuarios principales
 
@@ -53,6 +61,10 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 4. Una fecha solo será seleccionable si existe una adquisición elegible para el área actual.
 5. El umbral inicial de nubosidad será `< 10%`, configurable y aplicado en servidor o proveedor, no solo ocultado en UI.
 6. Los secretos nunca se expondrán como variables `VITE_*`.
+7. Ningún índice espectral o color RGB se presentará como concentración sin una
+   calibración regional validada con datos in situ.
+8. Los evalscripts se revisarán y mejorarán de uno en uno; un parámetro debe
+   quedar documentado, probado y validado antes de avanzar al siguiente.
 
 ## 5.1 Historias de usuario prioritarias
 
@@ -68,6 +80,9 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 - Como usuario, quiero entender si una fecha no tiene cobertura, excede la nubosidad o falló la consulta.
 - Como usuario móvil o de tablet, quiero operar los flujos principales sin paneles superpuestos.
 - Como operador, quiero detectar una regresión antes de que llegue a producción.
+- Como analista, quiero hacer clic sobre un píxel calibrado y ver una
+  concentración aproximada, su unidad, procedencia, incertidumbre y versión del
+  modelo para interpretar el resultado responsablemente.
 
 ### P2 — Futuro
 
@@ -237,6 +252,124 @@ Después de esa estabilización, el roadmap incorpora autenticación con Google 
 - Un área sin imágenes elegibles muestra una explicación y permite ampliar el rango.
 - El resultado se prueba con casos de 9.99%, 10%, metadato ausente y múltiples escenas por día.
 
+### Fase 8 — Calibración cuantitativa regional por parámetro (duración dependiente de datos)
+
+**Objetivo:** evolucionar las visualizaciones cualitativas para que, cuando
+exista evidencia suficiente, un clic sobre un área o píxel muestre una
+concentración aproximada científicamente trazable, con unidad, método,
+incertidumbre y dominio regional de validez.
+
+Esta fase no busca producir números visualmente plausibles. Una salida sólo se
+considerará cuantitativa cuando pueda trazarse a un escalar del proveedor, un
+algoritmo documentado calibrado regionalmente o una relación exacta
+`valor científico → color` respaldada por el evalscript y datos de validación.
+
+#### Secuencia de calibración
+
+El usuario compartirá el evalscript de cada parámetro. Se trabajará un parámetro
+a la vez, comenzando por:
+
+1. Chlorophyll-a, resolviendo explícitamente si el producto operativo será MCI,
+   NDCI u otro modelo regional de concentración.
+2. Turbidity.
+3. Total Suspended Solids.
+4. CDOM.
+5. Otros parámetros cuantitativos que se incorporen posteriormente.
+
+Las capas de detección —incendios, derrames de petróleo y sargazo— requieren
+modelos de clasificación y validación propios; no deben expresarse como una
+concentración mediante este flujo.
+
+#### Ciclo obligatorio por parámetro
+
+1. Versionar y conservar el evalscript original proporcionado por el usuario.
+2. Identificar bandas, colección, nivel de procesamiento, máscaras, fórmula,
+   coeficientes, unidad, dominio y paleta que realmente utiliza.
+3. Determinar si la salida actual es concentración, índice, proxy espectral,
+   canales RGB renderizados o no-data.
+4. Revisar literatura científica primaria aplicable al sensor, tipo de agua y
+   región; no transferir automáticamente un algoritmo desarrollado para otro
+   cuerpo de agua.
+5. Reunir observaciones in situ emparejadas espacial y temporalmente con las
+   adquisiciones Sentinel, incluyendo método de laboratorio, unidad, control de
+   calidad, límite de detección e incertidumbre.
+6. Calibrar el modelo y validarlo con datos independientes. Definir antes del
+   ajuste las métricas y umbrales de aceptación por parámetro, incluyendo como
+   mínimo MAE, RMSE, sesgo, tamaño de muestra y dominio de concentración.
+7. Versionar fórmula, coeficientes, dataset, región, periodo, preprocesamiento,
+   métricas, incertidumbre y limitaciones del modelo aceptado.
+8. Preferir una salida escalar `FLOAT32` mediante evalscript, Statistical API o
+   GetFeatureInfo. La inversión de color será únicamente un fallback cuando la
+   paleta exacta y su interpolación sean verificables.
+9. Integrar el resultado en el panel derecho y validar el comportamiento real
+   antes de comenzar el siguiente parámetro.
+
+#### Contrato del resultado puntual
+
+El resultado de un clic deberá distinguir al menos:
+
+- `provider-scalar`: valor escalar entregado por el proveedor.
+- `scientific-algorithm`: concentración calculada con un modelo calibrado.
+- `calibrated-color`: estimación invertida desde una paleta exacta.
+- `spectral-proxy`: índice cualitativo que no representa concentración.
+- `unavailable`: calibración o dato insuficiente.
+
+Cuando el resultado sea cuantitativo, el panel mostrará:
+
+- Parámetro, concentración aproximada y unidad correcta.
+- Fuente, algoritmo y versión de calibración.
+- Adquisición, fecha, colección y nubosidad.
+- Región y dominio de validez.
+- Confianza o intervalo de incertidumbre.
+- Advertencia de que se trata de una estimación satelital, no una medición in
+  situ.
+
+Si el modelo no es válido para la región, fecha, tipo de agua o rango observado,
+la UI mantendrá el resultado cualitativo y explicará por qué no hay una
+concentración disponible.
+
+#### Reglas técnicas y científicas
+
+- La leyenda, unidad, stops de color y estimador consumirán una sola definición
+  tipada y versionada.
+- No se estimará concentración desde el píxel compuesto con el basemap; se usará
+  la salida analítica original, sin contaminación por opacidad, antialiasing o
+  compresión.
+- La inversión de color reproducirá el método del evalscript y aplicará un
+  umbral perceptual documentado; un color fuera de tolerancia no se forzará al
+  valor más cercano.
+- El mismo punto, adquisición y parámetro producirá un valor equivalente al
+  cambiar el zoom dentro de una tolerancia definida.
+- “Out of the area of interest” se reservará para transparencia, no-data o fuera
+  del footprint; un color no calibrado dentro de la imagen no se clasificará
+  como fuera del área.
+- Las credenciales de Configuration API o Statistical API permanecerán en una
+  función server-side y nunca en variables `VITE_*`.
+
+#### Criterios de aceptación por parámetro
+
+- El evalscript original y el mejorado están versionados y comparados.
+- Fórmula, coeficientes, bandas, unidad y referencias científicas son
+  verificables.
+- Existe un dataset regional in situ con trazabilidad y una validación
+  independiente del ajuste.
+- Las métricas cumplen los umbrales acordados antes de mostrar concentración.
+- Ningún RGB, índice o proxy se etiqueta como mg/m³, mg/L, NTU u otra magnitud.
+- Un clic calibrado muestra concentración aproximada, unidad, procedencia,
+  versión e incertidumbre.
+- No-data, color no calibrado y punto fuera del área son estados distintos.
+- El resultado es estable frente al zoom y utiliza la misma adquisición que la
+  imagen visible.
+- Pruebas unitarias, integración, cobertura, build y validación real en navegador
+  están aprobadas.
+- El aviso cualitativo sólo se retira o sustituye para el parámetro y dominio
+  regional que hayan superado estos criterios.
+
+**Criterio de salida de la fase:** todos los parámetros priorizados tienen una
+ficha de decisión. Cada uno está marcado explícitamente como cuantitativo
+validado, proxy cualitativo o bloqueado por falta de datos; no quedan estados
+ambiguos.
+
 ## 7. Dependencias entre fases
 
 ```text
@@ -248,9 +381,13 @@ Baseline
                       └─ Vercel Preview
                            └─ Google OAuth
                                 └─ Calendario Copernicus <10%
+                                     └─ Calibración cuantitativa regional
 ```
 
-La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la Fase 2, pero su implementación productiva comienza después de autenticación.
+La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la
+Fase 2. La revisión bibliográfica y de evalscripts puede comenzar antes de la
+Fase 8, pero ninguna concentración se habilitará hasta disponer de datos
+regionales y validación independiente.
 
 ## 8. Riesgos y mitigaciones
 
@@ -261,6 +398,9 @@ La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la 
 | Callbacks OAuth variables en Preview | Login inconsistente | Usar callback estable del proveedor y allowlist controlada |
 | APIs externas lentas o limitadas | UX degradada | Caché, cancelación, rate limits y mensajes explícitos |
 | Dependencias actuales vulnerables | Riesgo de release | Auditoría por alcance y upgrades incrementales antes de producción |
+| Falta de muestras in situ regionales | Impide validar concentraciones | Mantener el parámetro como proxy cualitativo y definir una campaña de muestreo |
+| Modelo publicado no transferible a la región | Valores sesgados aunque la fórmula sea correcta | Calibrar por tipo de agua, validar fuera de muestra y documentar el dominio |
+| Inversión de colores contaminada por renderizado | Concentración falsa | Preferir salida escalar y usar sólo la imagen analítica con paleta exacta |
 
 ## 9. Fuera de alcance de este roadmap
 
@@ -269,6 +409,8 @@ La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la 
 - Máscaras de nubes calculadas píxel a píxel sobre el AOI.
 - Procesamiento asíncrono pesado o exportaciones analíticas.
 - Nuevos indicadores ambientales antes de validar los actuales.
+- Presentar clasificaciones de incendios, petróleo o sargazo como
+  concentraciones cuantitativas.
 
 ## 10. Preguntas abiertas
 
@@ -277,6 +419,12 @@ La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la 
 3. ¿La nubosidad `< 10%` se evalúa sobre la escena completa o debe calcularse sobre el área seleccionada?
 4. ¿Cuántos meses debe consultar el calendario por defecto?
 5. Cuando haya varias imágenes elegibles el mismo día, ¿se elige la menor nubosidad o el usuario selecciona una?
+6. ¿Cuál será la primera región y cuerpo de agua para calibrar Chlorophyll-a?
+7. ¿Qué observaciones in situ existen, con qué protocolo, fechas, unidades y
+   control de calidad?
+8. ¿Qué umbrales de MAE, RMSE, sesgo y tamaño de muestra aceptará cada parámetro?
+9. ¿La primera salida cuantitativa usará evalscript `FLOAT32`, Statistical API o
+   GetFeatureInfo escalar?
 
 ## 11. Quality check del PRD
 
@@ -284,7 +432,7 @@ La investigación de catálogo Copernicus puede ejecutarse en paralelo desde la 
 |---|---|---|
 | Claridad del problema | Aprobado | La deuda actual y el resultado esperado están definidos |
 | Disciplina de alcance | Aprobado | Roles, persistencia y máscaras AOI quedan fuera de v1 |
-| Medición | Aprobado | Cada objetivo tiene una meta verificable |
+| Medición | Aprobado | Cada objetivo tiene una meta verificable; los umbrales científicos se fijan por parámetro antes de calibrar |
 | Requisitos no funcionales | Aprobado con supuestos | Escala y disponibilidad deberán confirmarse |
 | Conflictos | Aprobado | Vercel se define como hosting, no como proveedor de identidad |
 | Señales de arquitectura | Aprobado | Integraciones, entidades, reglas y decisiones abiertas están documentadas |
@@ -304,17 +452,20 @@ MODE: AUDIT + incremental migration
 1. DOMAIN COMPLEXITY
 Level: Medium, moving toward domain-rich geospatial workflows
 Core entities: User, AreaOfInterest, Indicator, Acquisition, CloudCoverage,
-FeatureInfo, AnalysisSelection
+FeatureInfo, AnalysisSelection, CalibrationModel, InSituObservation,
+QuantitativeEstimate
 Core rules: real data only; cloud cover <10%; acquisition and analysis must match;
-missing cloud metadata is ineligible; timestamps normalized to UTC
+missing cloud metadata is ineligible; timestamps normalized to UTC; no
+concentration without regional validation; qualitative and quantitative outputs
+remain explicit states
 Domain events: AreaChanged, AvailabilityLoaded, AcquisitionSelected,
-IndicatorSelected, SessionChanged
+IndicatorSelected, SessionChanged, CalibrationAccepted, EstimateProduced
 
 2. TEAM & TIMELINE CONTEXT
 Team size: assumed solo or small <5
 Tech expertise: React, TypeScript, Vite, Leaflet
 Timeline pressure: medium
-Roadmap horizon: 8–12 weeks
+Roadmap horizon: 8–12 weeks plus parameter-specific calibration cycles
 
 3. SCALE & INFRASTRUCTURE SIGNALS
 Launch scale: undefined, assumed controlled beta
@@ -327,25 +478,32 @@ External APIs: Copernicus catalog/read, Copernicus WMS or imagery/read,
 Nominatim/read, Google OAuth through managed auth provider
 Auth: Google OAuth
 Hosting: Vercel
-Data sources: Copernicus imagery metadata and environmental layers
+Data sources: Copernicus imagery metadata and environmental layers, user-supplied
+evalscripts, scientific literature and regional in-situ observations
 
 5. KEY CONSTRAINTS
 Stack: retain React + TypeScript + Vite unless auth requirements justify a BFF
 Compliance: undefined; minimize stored personal data
 Must avoid: secrets in VITE variables, direct HTTP in visual components,
-simulated values presented as real, scene/date mismatch
+simulated values presented as real, scene/date mismatch, uncalibrated indices or
+rendered RGB presented as concentrations
 
 6. OPEN ARCHITECTURE QUESTIONS
 - Supabase Auth, Firebase Auth, Clerk or a small Vercel-hosted BFF?
 - Does the chosen Copernicus collection support direct scene-to-render mapping?
 - Scene-level cloud metadata or AOI-specific cloud calculation?
 - Where should availability caching live: browser, edge/serverless, or provider?
+- Where should versioned calibration datasets and model artifacts live?
+- What acceptance thresholds and uncertainty representation apply per parameter?
 
 7. NORTH STAR FOR ARCHITECTURE
-Optimize first for data traceability and a simple controlled-beta deployment,
-while keeping external providers replaceable behind typed adapters.
+Optimize first for scientific traceability and explicit uncertainty: every
+quantitative pixel estimate must be reproducible from an acquisition, evalscript,
+calibration model, dataset version and documented regional domain.
 ```
 
 ## Next step
 
-Run `/arch-review` with the Architecture Handoff Brief above to turn Fases 0–2 into a concrete target architecture, folder structure and migration sequence.
+Run `/arch-review` with the Architecture Handoff Brief above to define the
+storage, versioning, validation and serving boundaries required by Fase 8 before
+implementing the first quantitative Chlorophyll-a calibration.
