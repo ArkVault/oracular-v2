@@ -19,7 +19,7 @@ a production scientific system.
 - Sentinel-1 SAR screening views for contextual marine oil-like dark anomalies
   and positive-contrast Sargassum candidates.
 - Place search through a typed Nominatim adapter.
-- A dismissible workflow guide covering place search, acquisition date,
+- A workflow guide covering place search, acquisition date,
   indicator selection and readiness.
 - Single-month acquisition calendar populated from Copernicus metadata, with
   available imagery dates highlighted.
